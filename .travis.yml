@@ -36,15 +36,18 @@ matrix:
           packages:
             - libsubunit-dev
 
-    - name: "clang-5 on Linux, Rust enabled"
-      env: RUST_ENABLED=1 CMAKE_C_COMPILER=clang
+    - name: "gcc-9 on Linux, Rust enabled"
+      env: RUST_ENABLED=1
       script:
-        - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-        - echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main" | sudo tee -a /etc/apt/sources.list
-        - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/ppa
-        - sudo apt-get update
-        - sudo apt-get install linux-headers-`uname -r`
-        - sudo apt-get --yes install bison build-essential cmake flex git libclang-common-5.0-dev libelf-dev libllvm5.0 libz-dev lldb-5.0 llvm-5.0 llvm-5.0-dev llvm-5.0-runtime
+        - sudo apt-get update -y
+        - sudo apt-get upgrade -y
+        - sudo apt-get dist-upgrade -y
+        - sudo apt-get install build-essential software-properties-common -y
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - sudo apt-get update -y
+        - sudo apt-get install gcc-9 g++-9 -y
+        - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 60 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+        - sudo update-alternatives --config gcc
         - ./ci/run.sh
 
     - os: osx
