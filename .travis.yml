@@ -37,7 +37,7 @@ matrix:
             - libsubunit-dev
 
     - name: "clang-5 on Linux, Rust enabled"
-      env: RUST_ENABLED=1 CC=clang-5
+      env: RUST_ENABLED=1 CMAKE_C_COMPILER=clang
       script:
         - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
         - echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main" | sudo tee -a /etc/apt/sources.list
