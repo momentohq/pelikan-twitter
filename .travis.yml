@@ -1,4 +1,4 @@
-sudo: false
+sudo: required
 language: c
 dist: xenial
 
@@ -35,6 +35,17 @@ matrix:
           <<: *apt
           packages:
             - libsubunit-dev
+
+    - name: "clang-5 on Linux, Rust enabled"
+      env: RUST_ENABLED=1 CC=clang-5
+      script:
+        - wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+        - echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-5.0 main" | sudo tee -a /etc/apt/sources.list
+        - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/ppa
+        - sudo apt-get update
+        - sudo apt-get install linux-headers-`uname -r`
+        - sudo apt-get --yes install bison build-essential cmake flex git libclang-common-5.0-dev libelf-dev libllvm5.0 libz-dev lldb-5.0 llvm-5.0 llvm-5.0-dev llvm-5.0-runtime
+        - ./ci/run.sh
 
     - os: osx
       osx_image: xcode10.1
