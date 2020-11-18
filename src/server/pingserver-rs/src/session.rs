@@ -90,10 +90,10 @@ impl Session {
     }
 
     /// Get the set of readiness events the session is waiting for
-    fn readiness(&self) -> Ready {
+    fn readiness(&self) -> Interest {
         match self.state {
-            State::Reading => Ready::readable(),
-            State::Writing => Ready::writable(),
+            State::Reading => Interest::READABLE,
+            State::Writing => Interest::WRITABLE,
         }
     }
 }

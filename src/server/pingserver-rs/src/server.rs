@@ -1,8 +1,9 @@
-// use mio::net::TcpListener;
-use std::net::TcpListener;
+use mio::net::TcpListener;
+// use std::net::TcpListener;
 use crate::session::*;
 use crate::*;
 use std::io::ErrorKind;
+use std::os::unix::io::*;
 
 /// A `Server` is used to bind to a given socket address and accept new
 /// sessions. These sessions are moved onto a MPSC queue, where they can be
@@ -11,7 +12,7 @@ pub struct Server {
     addr: SocketAddr,
     config: Arc<PingserverConfig>,
     listener: TcpListener,
-    // poll: Poll,
+    poll: Poll,
     sender: SyncSender<Session>,
     // waker: Arc<Waker>,
 }
@@ -29,35 +30,35 @@ impl Server {
             std::io::Error::new(std::io::ErrorKind::Other, "Bad listen address")
         })?;
 
-        let listener = TcpListener::bind(&addr).map_err(|e| {
+        let mut listener = TcpListener::bind(addr).map_err(|e| {
             error!("{}", e);
             std::io::Error::new(std::io::ErrorKind::Other, "Failed to start tcp listener")
         })?;
-        listener.set_nonblocking(true).map_err(|e| {
-            error!("{}", e);
-            std::io::Error::new(std::io::ErrorKind::Other, "Failed to make tcp listener non-blocking")
-        })?;
-
-        // let poll = Poll::new().map_err(|e| {
+        // listener.set_nonblocking(true).map_err(|e| {
         //     error!("{}", e);
-        //     std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
+        //     std::io::Error::new(std::io::ErrorKind::Other, "Failed to make tcp listener non-blocking")
         // })?;
 
-        // // register listener to event loop
-        // poll.register(&mut listener, Token(0), Ready::readable(), PollOpt::edge())
-        //     .map_err(|e| {
-        //         error!("{}", e);
-        //         std::io::Error::new(
-        //             std::io::ErrorKind::Other,
-        //             "Failed to register listener with epoll",
-        //         )
-        //     })?;
+        let poll = Poll::new().map_err(|e| {
+            error!("{}", e);
+            std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
+        })?;
+
+        // register listener to event loop
+        poll.registry().register(&mut listener, Token(0), Interest::READABLE)
+            .map_err(|e| {
+                error!("{}", e);
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Failed to register listener with epoll",
+                )
+            })?;
 
         Ok(Self {
             addr,
             config,
             listener,
-            // poll,
+            poll,
             sender,
             // waker,
         })
@@ -68,41 +69,50 @@ impl Server {
     pub fn run(&mut self) {
         info!("running server on: {}", self.addr);
 
-        // let mut events = Events::with_capacity(self.config.server().nevent());
-        // let timeout = Some(std::time::Duration::from_millis(
-        //     self.config.server().timeout() as u64,
-        // ));
+        let mut events = Events::with_capacity(self.config.server().nevent());
+        let timeout = Some(std::time::Duration::from_millis(
+            self.config.server().timeout() as u64,
+        ));
 
         // repeatedly run accepting new connections and moving them to the worker
         loop {
-            match self.listener.accept() {
-                Ok((stream, addr)) => {
-                    stream.set_nonblocking(true).expect("failed to make stream non-blocking");
-                    let mut tmp = vec![255_u8; 4096];
-                    match stream.peek(&mut tmp) {
-                        Ok(bytes) => {
-                            info!("new stream has: {} pending bytes", bytes);
+            if self.poll.poll(&mut events, timeout).is_err() {
+                error!("Error polling server");
+            }
+            for event in events.iter() {
+                if event.token() == Token(0) {
+                    match self.listener.accept() {
+                        Ok((stream, addr)) => {
+                            let fd = stream.into_raw_fd();
+                            let stream = unsafe { std::net::TcpStream::from_raw_fd(fd) };
+                            stream.set_nonblocking(true).expect("failed to make stream non-blocking");
+                            let mut tmp = vec![255_u8; 4096];
+                            match stream.peek(&mut tmp) {
+                                Ok(bytes) => {
+                                    info!("new stream has: {} pending bytes", bytes);
+                                }
+                                Err(e) => {
+                                    if e.kind() == ErrorKind::WouldBlock {
+                                        // just isn't ready
+                                    } else {
+                                        info!("peek on new stream returned some error");
+                                    }
+                                }
+                            }
+                            let client = Session::new(addr, stream, State::Reading);
+                            if self.sender.send(client).is_err() {
+                                println!("error sending client to worker");
+                            }
                         }
                         Err(e) => {
                             if e.kind() == ErrorKind::WouldBlock {
                                 // just isn't ready
                             } else {
-                                info!("peek on new stream returned some error");
+                                info!("error accepting new stream");
                             }
+                            
                         }
                     }
-                    let client = Session::new(addr, stream, State::Reading);
-                    if self.sender.send(client).is_err() {
-                        println!("error sending client to worker");
-                    }
-                }
-                Err(e) => {
-                    if e.kind() == ErrorKind::WouldBlock {
-                        // just isn't ready
-                    } else {
-                        info!("error accepting new stream");
-                    }
-                    
                 }
             }
 
