@@ -1,6 +1,7 @@
 use crate::session::*;
 use crate::*;
 use std::sync::Arc;
+use std::io::{Read, Write, ErrorKind};
 
 /// A `Worker` handles events on `Session`s
 pub struct Worker {
@@ -70,33 +71,22 @@ impl Worker {
     /// Handle a read event for the session given its token
     fn do_read(&mut self, token: Token) {
         let session = self.sessions.get_mut(token.0).unwrap();
-
+        let mut buf = vec![255_u8; 4096];
         // read from stream to buffer
-        match session.read() {
-            Ok(Some(0)) => {
+        match session.stream().read(&mut buf) {
+            Ok(0) => {
                 self.handle_hup(token);
             }
-            Ok(Some(_)) => {
-                // parse buffer contents
-                let buf = session.rx_buffer();
+            Ok(bytes) => {
+                buf.truncate(bytes);
                 if buf.len() < 6 || &buf[buf.len() - 2..buf.len()] != b"\r\n" {
                     // Shortest request is "PING\r\n" at 6 bytes
                     // All complete responses end in CRLF
 
                     // incomplete request, stay in reading
                 } else if buf.len() == 6 && &buf[..] == b"PING\r\n" {
-                    session.clear_buffer();
-                    if session.write(b"PONG\r\n").is_ok() {
-                        if session.flush().is_ok() {
-                            if session.tx_pending() {
-                                // wait to write again
-                                session.set_state(State::Writing);
-                                self.reregister(token);
-                            }
-                        } else {
-                            self.handle_error(token);
-                        }
-                    } else {
+                    // session.clear_buffer();
+                    if session.stream().write(b"PONG\r\n").is_err() {
                         self.handle_error(token);
                     }
                 } else {
@@ -104,36 +94,37 @@ impl Worker {
                     self.handle_error(token);
                 }
             }
-            Ok(None) => {
-                // spurious read
-            }
-            Err(_) => {
-                // some read error
-                self.handle_error(token);
+            Err(e) => {
+                if e.kind() == ErrorKind::WouldBlock {
+                    trace!("spuriour wakeup");
+                } else {
+                    // some read error
+                    self.handle_error(token);
+                }
             }
         }
     }
 
-    /// Handle a write event for a session given its token
-    fn do_write(&mut self, token: Token) {
-        let session = &mut self.sessions[token.0];
-        match session.flush() {
-            Ok(Some(_)) => {
-                if !session.tx_pending() {
-                    // done writing, transition to reading
-                    session.set_state(State::Reading);
-                    self.reregister(token);
-                }
-            }
-            Ok(None) => {
-                // spurious write
-            }
-            Err(_) => {
-                // some error writing
-                self.handle_error(token);
-            }
-        }
-    }
+    // /// Handle a write event for a session given its token
+    // fn do_write(&mut self, token: Token) {
+    //     let session = &mut self.sessions[token.0];
+    //     match session.flush() {
+    //         Ok(Some(_)) => {
+    //             if !session.tx_pending() {
+    //                 // done writing, transition to reading
+    //                 session.set_state(State::Reading);
+    //                 self.reregister(token);
+    //             }
+    //         }
+    //         Ok(None) => {
+    //             // spurious write
+    //         }
+    //         Err(_) => {
+    //             // some error writing
+    //             self.handle_error(token);
+    //         }
+    //     }
+    // }
 
     /// Run the `Worker` in a loop, handling new session events
     pub fn run(&mut self) -> Self {
@@ -157,7 +148,7 @@ impl Worker {
                     }
 
                     if event.is_writable() {
-                        self.do_write(token);
+                        // self.do_write(token);
                     }
                 }
             }
