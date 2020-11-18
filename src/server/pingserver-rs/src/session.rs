@@ -2,7 +2,8 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use std::net::TcpStream;
+// use std::net::TcpStream;
+use mio::net::TcpStream;
 use crate::*;
 
 #[allow(dead_code)]
@@ -27,22 +28,22 @@ impl Session {
         }
     }
 
-    // /// Register the `Session` with the event loop
-    // pub fn register(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-    //     let interest = self.readiness();
-    //     poll.register(&mut self.stream, self.token, interest, PollOpt::edge())
-    // }
+    /// Register the `Session` with the event loop
+    pub fn register(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+        let interest = self.readiness();
+        poll.registry().register(&mut self.stream, self.token, interest)
+    }
 
-    // /// Deregister the `Session` from the event loop
-    // pub fn deregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-    //     poll.deregister(&mut self.stream)
-    // }
+    /// Deregister the `Session` from the event loop
+    pub fn deregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+        poll.registry().deregister(&mut self.stream)
+    }
 
-    // /// Reregister the `Session` with the event loop
-    // pub fn reregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-    //     let interest = self.readiness();
-    //     poll.reregister(&mut self.stream, self.token, interest, PollOpt::edge())
-    // }
+    /// Reregister the `Session` with the event loop
+    pub fn reregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+        let interest = self.readiness();
+        poll.registry().reregister(&mut self.stream, self.token, interest)
+    }
 
     pub fn stream(&mut self) -> &mut TcpStream {
         &mut self.stream
@@ -90,10 +91,10 @@ impl Session {
     }
 
     /// Get the set of readiness events the session is waiting for
-    fn readiness(&self) -> Ready {
+    fn readiness(&self) -> Interest {
         match self.state {
-            State::Reading => Ready::readable(),
-            State::Writing => Ready::writable(),
+            State::Reading => Interest::READABLE,
+            State::Writing => Interest::WRITABLE,
         }
     }
 }

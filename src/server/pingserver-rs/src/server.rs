@@ -91,6 +91,7 @@ impl Server {
                             }
                         }
                     }
+                    let stream = mio::net::TcpStream::from_std(stream);
                     let client = Session::new(addr, stream, State::Reading);
                     if self.sender.send(client).is_err() {
                         println!("error sending client to worker");
