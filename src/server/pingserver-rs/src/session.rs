@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use mio::net::TcpStream;
+use std::net::TcpStream;
 use crate::*;
 
 #[allow(dead_code)]
@@ -27,22 +27,22 @@ impl Session {
         }
     }
 
-    /// Register the `Session` with the event loop
-    pub fn register(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-        let interest = self.readiness();
-        poll.registry().register(&mut self.stream, self.token, interest)
-    }
+    // /// Register the `Session` with the event loop
+    // pub fn register(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+    //     let interest = self.readiness();
+    //     poll.register(&mut self.stream, self.token, interest, PollOpt::edge())
+    // }
 
-    /// Deregister the `Session` from the event loop
-    pub fn deregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-        poll.registry().deregister(&mut self.stream)
-    }
+    // /// Deregister the `Session` from the event loop
+    // pub fn deregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+    //     poll.deregister(&mut self.stream)
+    // }
 
-    /// Reregister the `Session` with the event loop
-    pub fn reregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
-        let interest = self.readiness();
-        poll.registry().reregister(&mut self.stream, self.token, interest)
-    }
+    // /// Reregister the `Session` with the event loop
+    // pub fn reregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
+    //     let interest = self.readiness();
+    //     poll.reregister(&mut self.stream, self.token, interest, PollOpt::edge())
+    // }
 
     pub fn stream(&mut self) -> &mut TcpStream {
         &mut self.stream
@@ -90,11 +90,18 @@ impl Session {
     }
 
     /// Get the set of readiness events the session is waiting for
-    fn readiness(&self) -> Interest {
+    fn readiness(&self) -> Ready {
         match self.state {
-            State::Reading => Interest::READABLE,
-            State::Writing => Interest::WRITABLE,
+            State::Reading => Ready::readable(),
+            State::Writing => Ready::writable(),
         }
+    }
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        self.stream.shutdown(std::net::Shutdown::Both);
+
     }
 }
 

@@ -7,10 +7,10 @@ use std::io::{Read, Write, ErrorKind};
 pub struct Worker {
     config: Arc<PingserverConfig>,
     sessions: Slab<Session>,
-    poll: Poll,
+    // poll: Poll,
     receiver: Receiver<Session>,
-    waker: Arc<Waker>,
-    waker_token: Token,
+    // waker: Arc<Waker>,
+    // waker_token: Token,
 }
 
 pub const WAKER_TOKEN: usize = usize::MAX;
@@ -21,30 +21,30 @@ impl Worker {
         config: Arc<PingserverConfig>,
         receiver: Receiver<Session>,
     ) -> Result<Self, std::io::Error> {
-        let poll = Poll::new().map_err(|e| {
-            error!("{}", e);
-            std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
-        })?;
+        // let poll = Poll::new().map_err(|e| {
+        //     error!("{}", e);
+        //     std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
+        // })?;
         let sessions = Slab::<Session>::new();
-        let waker_token = Token(WAKER_TOKEN);
-        let waker = Arc::new(Waker::new(&poll.registry(), waker_token)?);
+        // let waker_token = Token(WAKER_TOKEN);
+        // let waker = Arc::new(Waker::new(&poll.registry(), waker_token)?);
 
         Ok(Self {
             config,
-            poll,
+            // poll,
             receiver,
             sessions,
-            waker,
-            waker_token,
+            // waker,
+            // waker_token,
         })
     }
 
     /// Close a session given its token
     fn close(&mut self, token: Token) {
-        let mut session = self.sessions.remove(token.0);
-        if session.deregister(&self.poll).is_err() {
-            error!("Error deregistering");
-        }
+        let _ = self.sessions.remove(token.0);
+        // if session.deregister(&self.poll).is_err() {
+        //     error!("Error deregistering");
+        // }
     }
 
     /// Handle HUP and zero-length reads
@@ -59,14 +59,14 @@ impl Worker {
         self.close(token);
     }
 
-    /// Reregister the session given its token
-    fn reregister(&mut self, token: Token) {
-        let session = &mut self.sessions[token.0];
-        if session.reregister(&self.poll).is_err() {
-            error!("Failed to reregister");
-            self.close(token);
-        }
-    }
+    // /// Reregister the session given its token
+    // fn reregister(&mut self, token: Token) {
+    //     let session = &mut self.sessions[token.0];
+    //     if session.reregister(&self.poll).is_err() {
+    //         error!("Failed to reregister");
+    //         self.close(token);
+    //     }
+    // }
 
     /// Handle a read event for the session given its token
     fn do_read(&mut self, token: Token) {
@@ -132,53 +132,73 @@ impl Worker {
 
     /// Run the `Worker` in a loop, handling new session events
     pub fn run(&mut self) -> Self {
-        let mut events = Events::with_capacity(self.config.worker().nevent());
-        let timeout = Some(std::time::Duration::from_millis(
-            self.config.worker().timeout() as u64,
-        ));
+        // let mut events = Events::with_capacity(self.config.worker().nevent());
+        // let timeout = Some(std::time::Duration::from_millis(
+        //     self.config.worker().timeout() as u64,
+        // ));
 
         loop {
             // get client events with timeout
-            if self.poll.poll(&mut events, timeout).is_err() {
-                error!("Error polling");
-            }
+            // if self.poll.poll(&mut events, timeout).is_err() {
+            //     error!("Error polling");
+            // }
 
-            // process all events
-            for event in events.iter() {
-                let token = event.token();
-                if token != self.waker_token {
-                    if event.is_readable() {
-                        self.do_read(token);
+            // // process all events
+            // for event in events.iter() {
+            //     let token = event.token();
+            //     // if token != self.waker_token {
+            //         if event.readiness().is_readable() {
+            //             self.do_read(token);
+            //         }
+
+            //         if event.readiness().is_writable() {
+            //             // self.do_write(token);
+            //         }
+            //     // }
+            // }
+
+            let mut pending = Vec::new();
+
+            for (id, session) in self.sessions.iter_mut() {
+                let mut tmp = vec![255_u8; 4096];
+                match session.stream().peek(&mut tmp) {
+                    Ok(_) => {
+                        pending.push(id);
                     }
-
-                    if event.is_writable() {
-                        // self.do_write(token);
+                    Err(_) => {
+                        // don't do anything
                     }
                 }
             }
 
+            for id in pending {
+                self.do_read(Token(id));
+            }
+
             // handle new connections
             while let Ok(mut s) = self.receiver.try_recv() {
+                info!("new session");
                 // reserve vacant slab
                 let session = self.sessions.vacant_entry();
 
                 // set client token to match slab
                 s.set_token(Token(session.key()));
+                session.insert(s);
 
-                // register tcp stream and insert into slab if successful
-                match s.register(&self.poll) {
-                    Ok(_) => {
-                        session.insert(s);
-                    }
-                    Err(_) => {
-                        error!("Error registering new socket");
-                    }
-                };
+                // // register tcp stream and insert into slab if successful
+                // match s.register(&self.poll) {
+                //     Ok(_) => {
+                //         session.insert(s);
+                //     }
+                //     Err(_) => {
+                //         error!("Error registering new socket");
+                //     }
+                // };
             }
         }
     }
 
-    pub fn waker(&self) -> Arc<Waker> {
-        self.waker.clone()
-    }
+    // pub fn waker(&self) -> Arc<Waker> {
+    //     self.waker.clone()
+    // }
 }
