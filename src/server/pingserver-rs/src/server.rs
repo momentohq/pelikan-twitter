@@ -73,6 +73,12 @@ impl Server {
             for event in events.iter() {
                 if event.token() == Token(0) {
                     if let Ok((stream, addr)) = self.listener.accept() {
+                        let mut tmp = vec![255_u8; 4096];
+                        if let Ok(pending) = stream.peek(&mut tmp) {
+                            info!("new stream has: {} pending bytes", pending);
+                        } else {
+                            info!("peek on new stream returned some error");
+                        }
                         let client = Session::new(addr, stream, State::Reading);
                         if self.sender.send(client).is_err() {
                             println!("error sending client to worker");
