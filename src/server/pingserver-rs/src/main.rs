@@ -2,14 +2,16 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
+#[macro_use]
+extern crate log;
+
+use log::*;
+
 use config::PingserverConfig;
 use std::net::SocketAddr;
 use std::sync::mpsc::*;
 use std::sync::Arc;
 
-use log::*;
-// use mio::net::*;
-// use mio::unix::*;
 use mio::*;
 use slab::Slab;
 
@@ -53,11 +55,11 @@ fn main() {
         error!("{}", e);
         std::process::exit(1);
     });
-    // let waker = worker.waker();
+    let waker = worker.waker();
     let worker_thread = std::thread::spawn(move || worker.run());
 
     // initialize server
-    let mut server = Server::new(config, sender).unwrap_or_else(|e| {
+    let mut server = Server::new(config, sender, waker).unwrap_or_else(|e| {
         error!("{}", e);
         std::process::exit(1);
     });

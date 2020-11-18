@@ -13,7 +13,7 @@ pub struct Server {
     listener: TcpListener,
     // poll: Poll,
     sender: SyncSender<Session>,
-    // waker: Arc<Waker>,
+    waker: Arc<Waker>,
 }
 
 impl Server {
@@ -22,7 +22,7 @@ impl Server {
     pub fn new(
         config: Arc<PingserverConfig>,
         sender: SyncSender<Session>,
-        // waker: Arc<Waker>,
+        waker: Arc<Waker>,
     ) -> Result<Self, std::io::Error> {
         let addr = config.server().socket_addr().map_err(|e| {
             error!("{}", e);
@@ -59,7 +59,7 @@ impl Server {
             listener,
             // poll,
             sender,
-            // waker,
+            waker,
         })
     }
 
@@ -95,6 +95,8 @@ impl Server {
                     let client = Session::new(addr, stream, State::Reading);
                     if self.sender.send(client).is_err() {
                         println!("error sending client to worker");
+                    } else {
+                        let _ = self.waker.wake();
                     }
                 }
                 Err(e) => {

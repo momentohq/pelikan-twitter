@@ -7,7 +7,7 @@ description = "an over-engineered ping server written in Rust"
 license = "Apache-2.0"
 
 [dependencies]
-bytes = "0.4.12"
+bytes = "0.6.0"
 chrono = "0.4.11"
 config = { path = "../../rust/config" }
 log = { version = "0.4.8", features = ["std"] }

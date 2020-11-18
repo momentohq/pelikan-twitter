@@ -3,8 +3,10 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 // use std::net::TcpStream;
+use crate::buffer::Buffer;
 use mio::net::TcpStream;
 use crate::*;
+use std::io::Write;
 
 #[allow(dead_code)]
 /// A `Session` is the complete state of a TCP stream
@@ -13,7 +15,7 @@ pub struct Session {
     addr: SocketAddr,
     stream: TcpStream,
     state: State,
-    // buffer: Buffer,
+    buffer: Buffer,
 }
 
 impl Session {
@@ -24,7 +26,7 @@ impl Session {
             addr,
             stream,
             state,
-            // buffer: Buffer::new(1024, 1024),
+            buffer: Buffer::new(1024, 1024),
         }
     }
 
@@ -45,39 +47,34 @@ impl Session {
         poll.registry().reregister(&mut self.stream, self.token, interest)
     }
 
-    pub fn stream(&mut self) -> &mut TcpStream {
-        &mut self.stream
+    pub fn advance_buffer(&mut self, bytes: usize) {
+        self.buffer.advance_rx(bytes);
     }
 
-    // /// Reads from the stream into the session buffer
-    // pub fn read(&mut self) -> Result<Option<usize>, std::io::Error> {
-    //     self.buffer.read_from(&mut self.stream)
-    // }
+    /// Reads from the stream into the session buffer
+    pub fn read(&mut self) -> Result<usize, std::io::Error> {
+        self.buffer.read_from(&mut self.stream)
+    }
 
-    // /// Get a reference to the contents of the receive buffer
-    // pub fn rx_buffer(&self) -> &[u8] {
-    //     self.buffer.rx_buffer()
-    // }
+    /// Get a reference to the contents of the receive buffer
+    pub fn rx_buffer(&self) -> &[u8] {
+        self.buffer.rx_buffer()
+    }
 
-    // /// Return true if there are still bytes in the tx buffer
-    // pub fn tx_pending(&self) -> bool {
-    //     self.buffer.tx_pending()
-    // }
+    /// Return true if there are still bytes in the tx buffer
+    pub fn tx_pending(&self) -> usize {
+        self.buffer.tx_pending()
+    }
 
-    // /// Clear the buffer
-    // pub fn clear_buffer(&mut self) {
-    //     self.buffer.clear()
-    // }
+    /// Write to the session buffer
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
+        self.buffer.write(buf)
+    }
 
-    // /// Write to the session buffer
-    // pub fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
-    //     self.buffer.write(buf)
-    // }
-
-    // /// Flush the session buffer to the stream
-    // pub fn flush(&mut self) -> Result<Option<usize>, std::io::Error> {
-    //     self.buffer.write_to(&mut self.stream)
-    // }
+    /// Flush the session buffer to the stream
+    pub fn flush(&mut self) -> Result<Option<usize>, std::io::Error> {
+        self.buffer.write_to(&mut self.stream)
+    }
 
     /// Set the state of the session
     pub fn set_state(&mut self, state: State) {
@@ -101,8 +98,7 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        self.stream.shutdown(std::net::Shutdown::Both);
-
+        let _ = self.stream.shutdown(std::net::Shutdown::Both);
     }
 }
 
