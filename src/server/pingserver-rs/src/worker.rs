@@ -78,7 +78,7 @@ impl Worker {
                 self.handle_hup(token);
             }
             Ok(bytes) => {
-                info!("got: {} bytes", bytes);
+                trace!("got: {} bytes", bytes);
                 buf.truncate(bytes);
                 if buf.len() < 6 || &buf[buf.len() - 2..buf.len()] != b"\r\n" {
                     // Shortest request is "PING\r\n" at 6 bytes
@@ -86,12 +86,12 @@ impl Worker {
 
                     // incomplete request, stay in reading
                 } else if buf.len() == 6 && &buf[..] == b"PING\r\n" {
-                    info!("PING");
+                    trace!("PING");
                     // session.clear_buffer();
                     if session.stream().write(b"PONG\r\n").is_err() {
                         self.handle_error(token);
                     } else {
-                        info!("PONG");
+                        trace!("PONG");
                     }
                 } else {
                     debug!("error");
