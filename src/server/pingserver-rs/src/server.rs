@@ -102,6 +102,7 @@ impl Server {
                 Err(e) => {
                     if e.kind() == ErrorKind::WouldBlock {
                         // just isn't ready
+                        std::thread::sleep(std::time::Duration::from_millis(1));
                     } else {
                         info!("error accepting new stream");
                     }
