@@ -27,6 +27,7 @@ path = "benches/benchmark.rs"
 harness = false
 
 [dependencies]
+openssl = { path = "../../../../rust-openssl/openssl" }
 chrono = "0.4.11"
 config = { path = "../../rust/config" }
 log = { version = "0.4.8", features = ["std"] }

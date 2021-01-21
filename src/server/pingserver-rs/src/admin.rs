@@ -3,8 +3,12 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 
 use crate::event_loop::EventLoop;
+use crate::server::Stream;
 use crate::session::*;
 use crate::*;
+use openssl::ssl::HandshakeError;
+use openssl::ssl::Ssl;
+use openssl::ssl::SslContext;
 
 use mio::net::TcpListener;
 
@@ -18,7 +22,7 @@ pub struct Admin {
     config: Arc<PingserverConfig>,
     listener: TcpListener,
     poll: Poll,
-    tls_config: Option<Arc<rustls::ServerConfig>>,
+    ssl_context: Option<SslContext>,
     sessions: Slab<Session>,
     metrics: Arc<Metrics<AtomicU64, AtomicU64>>,
     message_receiver: Receiver<Message>,
@@ -46,7 +50,7 @@ impl Admin {
             std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
         })?;
 
-        let tls_config = crate::common::load_tls_config(&config)?;
+        let ssl_context = crate::common::ssl_context(&config)?;
 
         // register listener to event loop
         poll.registry()
@@ -68,7 +72,7 @@ impl Admin {
             config,
             listener,
             poll,
-            tls_config,
+            ssl_context,
             sessions,
             metrics,
             message_sender,
@@ -104,33 +108,67 @@ impl Admin {
                 // handle new sessions
                 if event.token() == Token(LISTENER_TOKEN) {
                     while let Ok((stream, addr)) = self.listener.accept() {
-                        if let Some(tls_config) = &self.tls_config {
-                            let mut session = Session::new(
-                                addr,
-                                stream,
-                                State::Handshaking,
-                                Some(rustls::ServerSession::new(&tls_config)),
-                                self.metrics.clone(),
-                            );
-                            let s = self.sessions.vacant_entry();
-                            let token = s.key();
-                            session.set_token(Token(token));
-                            let _ = session.register(&self.poll);
-                            s.insert(session);
+                        if let Some(ssl_context) = &self.ssl_context {
+                            match Ssl::new(&ssl_context).map(|v| v.accept(stream)) {
+                                Ok(Ok(tls_stream)) => {
+                                    let mut session = Session::new(
+                                        addr,
+                                        Stream::Tls(tls_stream),
+                                        State::Established,
+                                        None,
+                                        self.metrics.clone(),
+                                    );
+                                    trace!("accepted new session: {}", addr);
+                                    let s = self.sessions.vacant_entry();
+                                    let token = s.key();
+                                    session.set_token(Token(token));
+                                    if session.register(&self.poll).is_ok() {
+                                        s.insert(session);
+                                    } else {
+                                        let _ =
+                                            self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                    }
+                                }
+                                Ok(Err(HandshakeError::WouldBlock(tls_stream))) => {
+                                    let tls_stream = tls_stream.into_stream();
+                                    let mut session = Session::new(
+                                        addr,
+                                        Stream::Tls(tls_stream),
+                                        State::Handshaking,
+                                        None,
+                                        self.metrics.clone(),
+                                    );
+                                    let s = self.sessions.vacant_entry();
+                                    let token = s.key();
+                                    session.set_token(Token(token));
+                                    if session.register(&self.poll).is_ok() {
+                                        s.insert(session);
+                                    } else {
+                                        let _ =
+                                            self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                    }
+                                }
+                                Ok(Err(_)) | Err(_) => {
+                                    let _ = self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                }
+                            }
                         } else {
                             let mut session = Session::new(
                                 addr,
-                                stream,
+                                Stream::Plain(stream),
                                 State::Established,
                                 None,
                                 self.metrics.clone(),
                             );
-                            trace!("accepted new admin session: {}", addr);
+                            trace!("accepted new session: {}", addr);
                             let s = self.sessions.vacant_entry();
                             let token = s.key();
                             session.set_token(Token(token));
-                            let _ = session.register(&self.poll);
-                            s.insert(session);
+                            if session.register(&self.poll).is_ok() {
+                                s.insert(session);
+                            } else {
+                                let _ = self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                            }
                         };
                     }
                 } else {
@@ -142,6 +180,14 @@ impl Admin {
                     if event.is_error() {
                         self.increment_count(&Stat::AdminEventError);
                         self.handle_error(token);
+                    }
+
+                    if let Some(session) = self.sessions.get_mut(token.0) {
+                        if session.is_handshaking() {
+                            if session.do_handshake().is_err() {
+                                continue;
+                            }
+                        }
                     }
 
                     // handle write events before read events to reduce write

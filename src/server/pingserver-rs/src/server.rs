@@ -5,10 +5,20 @@
 use crate::event_loop::EventLoop;
 use crate::session::*;
 use crate::*;
+use mio::net::TcpStream;
+use openssl::ssl::HandshakeError;
+use openssl::ssl::Ssl;
+use openssl::ssl::SslContext;
+use openssl::ssl::SslStream;
 
 use mio::net::TcpListener;
 
 use std::convert::TryInto;
+
+pub enum Stream {
+    Plain(TcpStream),
+    Tls(SslStream<TcpStream>),
+}
 
 /// A `Server` is used to bind to a given socket address and accept new
 /// sessions. These sessions are moved onto a MPSC queue, where they can be
@@ -19,7 +29,7 @@ pub struct Server {
     listener: TcpListener,
     poll: Poll,
     sender: SyncSender<Session>,
-    tls_config: Option<Arc<rustls::ServerConfig>>,
+    ssl_context: Option<SslContext>,
     sessions: Slab<Session>,
     metrics: Arc<Metrics<AtomicU64, AtomicU64>>,
     message_receiver: Receiver<Message>,
@@ -49,7 +59,7 @@ impl Server {
             std::io::Error::new(std::io::ErrorKind::Other, "Failed to create epoll instance")
         })?;
 
-        let tls_config = crate::common::load_tls_config(&config)?;
+        let ssl_context = crate::common::ssl_context(&config)?;
 
         let (message_sender, message_receiver) = sync_channel(128);
 
@@ -72,7 +82,7 @@ impl Server {
             listener,
             poll,
             sender,
-            tls_config,
+            ssl_context,
             sessions,
             metrics,
             message_sender,
@@ -105,26 +115,50 @@ impl Server {
             for event in events.iter() {
                 if event.token() == Token(LISTENER_TOKEN) {
                     while let Ok((stream, addr)) = self.listener.accept() {
-                        if let Some(tls_config) = &self.tls_config {
-                            let mut session = Session::new(
-                                addr,
-                                stream,
-                                State::Handshaking,
-                                Some(rustls::ServerSession::new(&tls_config)),
-                                self.metrics.clone(),
-                            );
-                            let s = self.sessions.vacant_entry();
-                            let token = s.key();
-                            session.set_token(Token(token));
-                            if session.register(&self.poll).is_ok() {
-                                s.insert(session);
-                            } else {
-                                let _ = self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                        if let Some(ssl_context) = &self.ssl_context {
+                            match Ssl::new(&ssl_context).map(|v| v.accept(stream)) {
+                                Ok(Ok(tls_stream)) => {
+                                    let mut session = Session::new(
+                                        addr,
+                                        Stream::Tls(tls_stream),
+                                        State::Established,
+                                        None,
+                                        self.metrics.clone(),
+                                    );
+                                    trace!("accepted new session: {}", addr);
+                                    if self.sender.send(session).is_err() {
+                                        error!("error sending session to worker");
+                                        let _ =
+                                            self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                    }
+                                }
+                                Ok(Err(HandshakeError::WouldBlock(tls_stream))) => {
+                                    let tls_stream = tls_stream.into_stream();
+                                    let mut session = Session::new(
+                                        addr,
+                                        Stream::Tls(tls_stream),
+                                        State::Handshaking,
+                                        None,
+                                        self.metrics.clone(),
+                                    );
+                                    let s = self.sessions.vacant_entry();
+                                    let token = s.key();
+                                    session.set_token(Token(token));
+                                    if session.register(&self.poll).is_ok() {
+                                        s.insert(session);
+                                    } else {
+                                        let _ =
+                                            self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                    }
+                                }
+                                Ok(Err(_)) | Err(_) => {
+                                    let _ = self.metrics().increment_counter(&Stat::TcpAcceptEx, 1);
+                                }
                             }
                         } else {
                             let session = Session::new(
                                 addr,
-                                stream,
+                                Stream::Plain(stream),
                                 State::Established,
                                 None,
                                 self.metrics.clone(),
@@ -146,23 +180,8 @@ impl Server {
                         self.handle_error(token);
                     }
 
-                    // handle write events before read events to reduce write
-                    // buffer growth if there is also a readable event
-                    if event.is_writable() {
-                        let _ = self.metrics.increment_counter(&Stat::ServerEventWrite, 1);
-                        self.do_write(token);
-                    }
-
-                    // read events are handled last
-                    if event.is_readable() {
-                        let _ = self.metrics.increment_counter(&Stat::ServerEventRead, 1);
-                        let _ = self.do_read(token);
-                    }
-
-                    if let Some(handshaking) =
-                        self.sessions.get(token.0).map(|v| v.is_handshaking())
-                    {
-                        if !handshaking {
+                    if let Some(session) = self.sessions.get_mut(token.0) {
+                        if session.do_handshake().is_ok() {
                             let mut session = self.sessions.remove(token.0);
                             let _ = session.deregister(&self.poll);
                             session.set_state(State::Established);
