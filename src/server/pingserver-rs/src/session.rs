@@ -6,8 +6,6 @@ use crate::server::Stream;
 use crate::*;
 
 use rustcommon_buffer::*;
-use rustls::ServerSession;
-use rustls::Session as TlsSession;
 
 use std::convert::TryInto;
 use std::io::Write;
@@ -20,7 +18,6 @@ pub struct Session {
     stream: Stream,
     state: State,
     buffer: Buffer,
-    tls: Option<ServerSession>,
     metrics: Arc<Metrics<AtomicU64, AtomicU64>>,
 }
 
@@ -30,7 +27,6 @@ impl Session {
         addr: SocketAddr,
         stream: Stream,
         state: State,
-        tls: Option<ServerSession>,
         metrics: Arc<Metrics<AtomicU64, AtomicU64>>,
     ) -> Self {
         let _ = metrics.increment_counter(&Stat::TcpAccept, 1);
@@ -40,7 +36,6 @@ impl Session {
             stream,
             state,
             buffer: Buffer::with_capacity(1024, 1024),
-            tls,
             metrics,
         }
     }
@@ -169,18 +164,10 @@ impl Session {
 
     /// Get the set of readiness events the session is waiting for
     fn readiness(&self) -> Interest {
-        if let Some(ref tls) = self.tls {
-            if tls.wants_write() || self.buffer.write_pending() != 0 {
-                Interest::READABLE | Interest::WRITABLE
-            } else {
-                Interest::READABLE
-            }
+        if self.buffer.write_pending() != 0 {
+            Interest::READABLE | Interest::WRITABLE
         } else {
-            if self.buffer.write_pending() != 0 {
-                Interest::READABLE | Interest::WRITABLE
-            } else {
-                Interest::READABLE
-            }
+            Interest::READABLE
         }
     }
 
@@ -210,7 +197,6 @@ impl Session {
         trace!("closing session");
         let _ = self.metrics.increment_counter(&Stat::TcpClose, 1);
         // let _ = self.stream.shutdown(std::net::Shutdown::Both);
-        self.tls = None;
     }
 }
 

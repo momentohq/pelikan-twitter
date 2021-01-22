@@ -1254,7 +1254,6 @@ dependencies = [
  "rustcommon-buffer",
  "rustcommon-logger",
  "rustcommon-metrics",
- "rustls",
  "slab",
  "strum",
  "strum_macros",

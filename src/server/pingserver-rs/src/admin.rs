@@ -115,7 +115,6 @@ impl Admin {
                                         addr,
                                         Stream::Tls(tls_stream),
                                         State::Established,
-                                        None,
                                         self.metrics.clone(),
                                     );
                                     trace!("accepted new session: {}", addr);
@@ -135,7 +134,6 @@ impl Admin {
                                         addr,
                                         Stream::Tls(tls_stream),
                                         State::Handshaking,
-                                        None,
                                         self.metrics.clone(),
                                     );
                                     let s = self.sessions.vacant_entry();
@@ -157,7 +155,6 @@ impl Admin {
                                 addr,
                                 Stream::Plain(stream),
                                 State::Established,
-                                None,
                                 self.metrics.clone(),
                             );
                             trace!("accepted new session: {}", addr);

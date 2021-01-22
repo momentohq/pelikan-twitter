@@ -35,7 +35,6 @@ openssl = { git = "https://github.com/brayniac/rust-openssl", branch = "patched"
 rustcommon-buffer = { git = "https://github.com/twitter/rustcommon" }
 rustcommon-logger = { git = "https://github.com/twitter/rustcommon" }
 rustcommon-metrics = { git = "https://github.com/twitter/rustcommon" }
-rustls = "0.18.1"
 slab = "0.4.2"
 strum = "0.20.0"
 strum_macros = "0.20.1"

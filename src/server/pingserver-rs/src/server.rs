@@ -6,10 +6,7 @@ use crate::event_loop::EventLoop;
 use crate::session::*;
 use crate::*;
 use mio::net::TcpStream;
-use openssl::ssl::HandshakeError;
-use openssl::ssl::Ssl;
-use openssl::ssl::SslContext;
-use openssl::ssl::SslStream;
+use openssl::ssl::{HandshakeError, Ssl, SslContext, SslStream};
 
 use mio::net::TcpListener;
 
@@ -122,7 +119,6 @@ impl Server {
                                         addr,
                                         Stream::Tls(tls_stream),
                                         State::Established,
-                                        None,
                                         self.metrics.clone(),
                                     );
                                     trace!("accepted new session: {}", addr);
@@ -138,7 +134,6 @@ impl Server {
                                         addr,
                                         Stream::Tls(tls_stream),
                                         State::Handshaking,
-                                        None,
                                         self.metrics.clone(),
                                     );
                                     let s = self.sessions.vacant_entry();
@@ -160,7 +155,6 @@ impl Server {
                                 addr,
                                 Stream::Plain(stream),
                                 State::Established,
-                                None,
                                 self.metrics.clone(),
                             );
                             trace!("accepted new session: {}", addr);
