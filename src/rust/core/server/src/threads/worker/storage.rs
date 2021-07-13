@@ -80,75 +80,75 @@ where
     pub fn run(&mut self) {
         let workers = self.worker_queues.pending().len();
 
-        let mut worker_needs_wake = vec![false; workers];
+        // let mut worker_needs_wake = vec![false; workers];
 
-        let mut events = Events::with_capacity(self.nevent);
-        let timeout = Some(self.timeout);
+        // let mut events = Events::with_capacity(self.nevent);
+        // let timeout = Some(self.timeout);
 
         loop {
             increment_counter!(&Stat::StorageEventLoop);
 
             self.storage.expire();
 
-            // get events with timeout
-            if self.poll.poll(&mut events, timeout).is_err() {
-                error!("Error polling");
-            }
+            // // get events with timeout
+            // if self.poll.poll(&mut events, timeout).is_err() {
+            //     error!("Error polling");
+            // }
 
-            if !events.is_empty() {
-                let mut worker_pending = self.worker_queues.pending();
+            // if !events.is_empty() {
+            let mut worker_pending = self.worker_queues.pending();
 
-                trace!("handling events");
-                let mut empty = false;
+            trace!("handling events");
+            let mut empty = false;
 
-                while !empty {
-                    empty = true;
-                    for id in 0..workers {
-                        if worker_pending[id] > 0 {
-                            if let Ok(message) = self.worker_queues.recv_from(id) {
-                                trace!("handling request from worker: {}", id);
-                                increment_counter!(&Stat::ProcessReq);
-                                let token = message.token();
-                                let response = self.storage.execute(message.into_inner());
-                                let mut message = TokenWrapper::new(response, token);
-                                for retry in 0..QUEUE_RETRIES {
-                                    if let Err(QueueError::Full(m)) =
-                                        self.worker_queues.send_to(id, message)
-                                    {
-                                        if (retry + 1) == QUEUE_RETRIES {
-                                            error!("error sending message to worker");
-                                        }
-                                        let _ = self.worker_queues.wake(id);
-                                        message = m;
-                                    } else {
-                                        break;
+            while !empty {
+                empty = true;
+                for id in 0..workers {
+                    if worker_pending[id] > 0 {
+                        if let Ok(message) = self.worker_queues.recv_from(id) {
+                            trace!("handling request from worker: {}", id);
+                            increment_counter!(&Stat::ProcessReq);
+                            let token = message.token();
+                            let response = self.storage.execute(message.into_inner());
+                            let mut message = TokenWrapper::new(response, token);
+                            for retry in 0..QUEUE_RETRIES {
+                                if let Err(QueueError::Full(m)) =
+                                    self.worker_queues.send_to(id, message)
+                                {
+                                    if (retry + 1) == QUEUE_RETRIES {
+                                        error!("error sending message to worker");
                                     }
+                                    let _ = self.worker_queues.wake(id);
+                                    message = m;
+                                } else {
+                                    break;
                                 }
-                                worker_needs_wake[id] = true;
                             }
-                            empty = false;
-                            worker_pending[id] -= 1;
+                            // worker_needs_wake[id] = true;
                         }
-                    }
-                }
-
-                for (id, needs_wake) in worker_needs_wake.iter_mut().enumerate() {
-                    if *needs_wake {
-                        trace!("waking worker thread: {}", id);
-                        let _ = self.worker_queues.wake(id);
-                        *needs_wake = false;
-                    }
-                }
-
-                #[allow(clippy::never_loop)]
-                while let Ok(s) = self.signal_queue.recv_from(0) {
-                    match s {
-                        Signal::Shutdown => {
-                            return;
-                        }
+                        empty = false;
+                        worker_pending[id] -= 1;
                     }
                 }
             }
+
+            // for (id, needs_wake) in worker_needs_wake.iter_mut().enumerate() {
+            //     if *needs_wake {
+            //         trace!("waking worker thread: {}", id);
+            //         let _ = self.worker_queues.wake(id);
+            //         *needs_wake = false;
+            //     }
+            // }
+
+            #[allow(clippy::never_loop)]
+            while let Ok(s) = self.signal_queue.recv_from(0) {
+                match s {
+                    Signal::Shutdown => {
+                        return;
+                    }
+                }
+            }
+            // }
         }
     }
 

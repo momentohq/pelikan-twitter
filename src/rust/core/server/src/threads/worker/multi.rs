@@ -94,6 +94,8 @@ where
         loop {
             increment_counter!(&Stat::WorkerEventLoop);
 
+            self.handle_storage_queue();
+
             // get events with timeout
             if self.poll.poll(&mut events, self.timeout).is_err() {
                 error!("Error polling");
@@ -104,12 +106,14 @@ where
                 events.iter().count().try_into().unwrap(),
             );
 
+
+
             // process all events
             for event in events.iter() {
                 match event.token() {
                     Token(WAKER_TOKEN) => {
                         self.handle_new_sessions();
-                        self.handle_storage_queue();
+                        // self.handle_storage_queue();
 
                         #[allow(clippy::never_loop)]
                         while let Ok(signal) = self.signal_queue.recv_from(0) {
@@ -126,11 +130,11 @@ where
                 }
             }
 
-            // if we sent any messages to the storage thread, we need to wake it
-            if self.wake_storage && self.storage_queue.wake().is_ok() {
-                trace!("sent wake to storage");
-                self.wake_storage = false;
-            }
+            // // if we sent any messages to the storage thread, we need to wake it
+            // if self.wake_storage && self.storage_queue.wake().is_ok() {
+            //     trace!("sent wake to storage");
+            //     self.wake_storage = false;
+            // }
         }
     }
 
