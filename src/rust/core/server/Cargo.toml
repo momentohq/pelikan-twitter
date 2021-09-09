@@ -13,7 +13,7 @@ license = "Apache-2.0"
 [dependencies]
 ahash = "0.6.2"
 backtrace = "0.3.56"
-boring = "1.0.3"
+boring = { git = "https://github.com/brayniac/boring", branch = "icx" }
 bytes = "1.0.1"
 chrono = "0.4.19"
 common = { path = "../../common" }
