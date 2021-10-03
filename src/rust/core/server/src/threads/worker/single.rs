@@ -111,6 +111,25 @@ where
                     }
                 }
             }
+
+            // flush eventual counters
+            for metric in &metrics::rustcommon_metrics::metrics() {
+                let any = match metric.as_any() {
+                    Some(any) => any,
+                    None => {
+                        continue;
+                    }
+                };
+
+                if let Some(counter) = any.downcast_ref::<Counter>() {
+                    // println!("flushing: {}", metric.name());
+                    counter.flush();
+                    if metric.name() == "set" {
+                        println!("flushing: {} value: {}", metric.name(), counter.value());
+                    }
+                    
+                }
+            }
         }
     }
 

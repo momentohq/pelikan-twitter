@@ -1078,7 +1078,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-atomics"
 version = "1.0.0"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "serde",
 ]
@@ -1102,7 +1102,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-heatmap"
 version = "0.1.1"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "rustcommon-atomics 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "rustcommon-histogram 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
@@ -1113,7 +1113,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-histogram"
 version = "1.0.0"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "rustcommon-atomics 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "thiserror",
@@ -1131,7 +1131,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-logger"
 version = "1.0.0"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "log",
  "time",
@@ -1149,7 +1149,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1160,7 +1160,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-metrics-v2"
 version = "0.1.0"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "linkme",
  "once_cell",
@@ -1174,7 +1174,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-time"
 version = "0.0.6"
-source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#2809fe4908ade9386f12607ff4c00f5592baec9c"
 dependencies = [
  "chrono",
  "lazy_static",

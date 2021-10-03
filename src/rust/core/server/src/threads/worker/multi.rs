@@ -130,6 +130,20 @@ where
                 trace!("sent wake to storage");
                 self.wake_storage = false;
             }
+
+            // flush eventual counters
+            for metric in &metrics::rustcommon_metrics::metrics() {
+                let any = match metric.as_any() {
+                    Some(any) => any,
+                    None => {
+                        continue;
+                    }
+                };
+
+                if let Some(counter) = any.downcast_ref::<Counter>() {
+                    counter.flush();
+                }
+            }
         }
     }
 

@@ -312,6 +312,20 @@ impl Admin {
             self.get_rusage();
 
             let _ = self.log_drain.flush();
+
+            // flush eventual counters
+            for metric in &metrics::rustcommon_metrics::metrics() {
+                let any = match metric.as_any() {
+                    Some(any) => any,
+                    None => {
+                        continue;
+                    }
+                };
+
+                if let Some(counter) = any.downcast_ref::<Counter>() {
+                    counter.flush();
+                }
+            }
         }
     }
 
