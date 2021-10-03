@@ -261,7 +261,7 @@ version = "0.1.0"
 dependencies = [
  "boring",
  "config",
- "rustcommon-time",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
 ]
 
 [[package]]
@@ -387,7 +387,7 @@ version = "0.0.1"
 dependencies = [
  "config",
  "protocol",
- "rustcommon-time",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "seg",
 ]
 
@@ -616,7 +616,7 @@ dependencies = [
  "config",
  "log",
  "mpmc",
- "rustcommon-time",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
 ]
 
 [[package]]
@@ -815,10 +815,10 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "mio",
- "rustcommon-atomics",
+ "rustcommon-atomics 1.0.0 (git+https://github.com/twitter/rustcommon)",
  "rustcommon-buffer",
- "rustcommon-histogram",
- "rustcommon-logger",
+ "rustcommon-histogram 1.0.0 (git+https://github.com/twitter/rustcommon)",
+ "rustcommon-logger 1.0.0 (git+https://github.com/twitter/rustcommon)",
  "rustls",
  "slab",
  "webpki",
@@ -835,8 +835,8 @@ dependencies = [
  "logger",
  "metrics",
  "protocol",
- "rustcommon-logger",
- "rustcommon-time",
+ "rustcommon-logger 1.0.0 (git+https://github.com/twitter/rustcommon)",
+ "rustcommon-time 0.0.6 (git+https://github.com/twitter/rustcommon)",
  "server",
 ]
 
@@ -902,7 +902,7 @@ dependencies = [
  "criterion",
  "logger",
  "metrics",
- "rustcommon-time",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "session",
 ]
 
@@ -1078,6 +1078,14 @@ dependencies = [
 [[package]]
 name = "rustcommon-atomics"
 version = "1.0.0"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "rustcommon-atomics"
+version = "1.0.0"
 source = "git+https://github.com/twitter/rustcommon#f80fb5a83d057179b14e3871f77a5c61175edd75"
 dependencies = [
  "serde",
@@ -1094,11 +1102,20 @@ dependencies = [
 [[package]]
 name = "rustcommon-heatmap"
 version = "0.1.1"
-source = "git+https://github.com/twitter/rustcommon#f80fb5a83d057179b14e3871f77a5c61175edd75"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
 dependencies = [
- "rustcommon-atomics",
- "rustcommon-histogram",
- "rustcommon-time",
+ "rustcommon-atomics 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-histogram 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "thiserror",
+]
+
+[[package]]
+name = "rustcommon-histogram"
+version = "1.0.0"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+dependencies = [
+ "rustcommon-atomics 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "thiserror",
 ]
 
@@ -1107,8 +1124,17 @@ name = "rustcommon-histogram"
 version = "1.0.0"
 source = "git+https://github.com/twitter/rustcommon#f80fb5a83d057179b14e3871f77a5c61175edd75"
 dependencies = [
- "rustcommon-atomics",
+ "rustcommon-atomics 1.0.0 (git+https://github.com/twitter/rustcommon)",
  "thiserror",
+]
+
+[[package]]
+name = "rustcommon-logger"
+version = "1.0.0"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+dependencies = [
+ "log",
+ "time",
 ]
 
 [[package]]
@@ -1123,7 +1149,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-metrics-derive"
 version = "0.1.0"
-source = "git+https://github.com/twitter/rustcommon#f80fb5a83d057179b14e3871f77a5c61175edd75"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -1134,15 +1160,27 @@ dependencies = [
 [[package]]
 name = "rustcommon-metrics-v2"
 version = "0.1.0"
-source = "git+https://github.com/twitter/rustcommon#f80fb5a83d057179b14e3871f77a5c61175edd75"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
 dependencies = [
  "linkme",
  "once_cell",
  "parking_lot",
- "rustcommon-atomics",
+ "rustcommon-atomics 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "rustcommon-heatmap",
  "rustcommon-metrics-derive",
- "rustcommon-time",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+]
+
+[[package]]
+name = "rustcommon-time"
+version = "0.0.6"
+source = "git+https://github.com/brayniac/rustcommon?branch=eventual#21780d50b1e040705b7c9cd65977390073a88602"
+dependencies = [
+ "chrono",
+ "lazy_static",
+ "libc",
+ "mach",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -1212,8 +1250,8 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rand_xoshiro",
- "rustcommon-logger",
- "rustcommon-time",
+ "rustcommon-logger 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "thiserror",
 ]
 
@@ -1228,8 +1266,8 @@ dependencies = [
  "logger",
  "metrics",
  "protocol",
- "rustcommon-logger",
- "rustcommon-time",
+ "rustcommon-logger 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "server",
 ]
 
@@ -1302,8 +1340,8 @@ dependencies = [
  "queues",
  "rand",
  "rtrb",
- "rustcommon-logger",
- "rustcommon-time",
+ "rustcommon-logger 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "serde",
  "serde_json",
  "session",
@@ -1325,8 +1363,8 @@ dependencies = [
  "mio",
  "rand",
  "rtrb",
- "rustcommon-logger",
- "rustcommon-time",
+ "rustcommon-logger 1.0.0 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
+ "rustcommon-time 0.0.6 (git+https://github.com/brayniac/rustcommon?branch=eventual)",
  "serde",
  "serde_json",
  "slab",

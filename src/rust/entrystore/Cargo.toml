@@ -14,5 +14,5 @@ debug = ["seg/debug"]
 [dependencies]
 config = { path = "../config" }
 protocol = { path = "../protocol" }
-rustcommon-time = { git = "https://github.com/twitter/rustcommon" }
+rustcommon-time = { git = "https://github.com/brayniac/rustcommon", branch = "eventual" }
 seg = { path = "../storage/seg" }

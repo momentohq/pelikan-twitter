@@ -16,6 +16,7 @@ strum = "0.20.0"
 strum_macros = "0.20.1"
 
 [dependencies.rustcommon-metrics]
-git = "https://github.com/twitter/rustcommon"
+git = "https://github.com/brayniac/rustcommon"
+branch = "eventual"
 package="rustcommon-metrics-v2"
 features = ["heatmap"]

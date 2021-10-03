@@ -13,4 +13,4 @@ license = "Apache-2.0"
 [dependencies]
 boring = "1.0.3"
 config = { path = "../config" }
-rustcommon-time = { git = "https://github.com/twitter/rustcommon" }
+rustcommon-time = { git = "https://github.com/brayniac/rustcommon", branch = "eventual" }

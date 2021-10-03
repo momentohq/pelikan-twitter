@@ -18,7 +18,7 @@ common = { path = "../../rust/common" }
 config = { path = "../../rust/config" }
 logger = { path = "../../rust/logger" }
 metrics = { path = "../../rust/metrics" }
-rustcommon-time = { git = "https://github.com/twitter/rustcommon" }
+rustcommon-time = { git = "https://github.com/brayniac/rustcommon", branch = "eventual" }
 session = { path = "../../rust/session" }
 
 [dev-dependencies]
