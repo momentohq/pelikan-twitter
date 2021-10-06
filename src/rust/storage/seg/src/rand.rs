@@ -9,7 +9,7 @@ pub use inner::*;
 pub use rand::Rng as RandRng;
 pub use rand::RngCore as RandRngCore;
 
-#[cfg(test)]
+// #[cfg(test)]
 mod inner {
     use rand::SeedableRng;
 
@@ -21,15 +21,15 @@ mod inner {
     }
 }
 
-#[cfg(not(test))]
-mod inner {
-    use rand::SeedableRng;
+// #[cfg(not(test))]
+// mod inner {
+//     use rand::SeedableRng;
 
-    pub type Random = rand_chacha::ChaCha20Rng;
+//     pub type Random = rand_chacha::ChaCha20Rng;
 
-    // A cryptographically secure RNG using the ChaCha algorithm. Appropriate
-    // for production.
-    pub fn rng() -> Random {
-        rand_chacha::ChaCha20Rng::from_entropy()
-    }
-}
+//     // A cryptographically secure RNG using the ChaCha algorithm. Appropriate
+//     // for production.
+//     pub fn rng() -> Random {
+//         rand_chacha::ChaCha20Rng::from_entropy()
+//     }
+// }
