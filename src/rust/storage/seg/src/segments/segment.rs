@@ -311,7 +311,7 @@ impl<'a> Segment<'a> {
         ITEM_CURRENT.decrement();
         ITEM_CURRENT_BYTES.sub(item_size);
         ITEM_DEAD.increment();
-        ITEM_DEAD_BYTES.sub(item_size);
+        ITEM_DEAD_BYTES.add(item_size);
 
         self.check_magic();
         self.decr_item(item_size as i32);
