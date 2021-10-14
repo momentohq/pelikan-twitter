@@ -6,6 +6,7 @@
 
 use crate::EntryStore;
 
+mod memcache;
 mod ping;
 
 /// A no-op storage backend which implements `EntryStore` and storage protocol
