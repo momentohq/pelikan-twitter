@@ -29,7 +29,7 @@ fn get() {
             println!("keys: {:?}", keys);
             assert_eq!(keys.len(), keyset.len());
             for (id, key) in keyset.iter().enumerate() {
-                assert_eq!(keys[id].as_ref(), key.as_bytes());
+                assert_eq!(keys[id], key.as_bytes());
             }
         } else {
             panic!("invalid parse result");
@@ -40,7 +40,7 @@ fn get() {
     if let MemcacheRequest::Get { keys } = request.message {
         println!("keys: {:?}", keys);
         assert_eq!(keys.len(), 1);
-        assert_eq!(keys[0].as_ref(), b"0");
+        assert_eq!(keys[0], b"0");
     } else {
         panic!("invalid parse result");
     }
@@ -69,7 +69,7 @@ fn gets() {
             println!("keys: {:?}", keys);
             assert_eq!(keys.len(), keyset.len());
             for (id, key) in keyset.iter().enumerate() {
-                assert_eq!(keys[id].as_ref(), key.as_bytes());
+                assert_eq!(keys[id], key.as_bytes());
             }
         } else {
             panic!("invalid parse result");
@@ -157,7 +157,7 @@ fn delete() {
             .parse(format!("delete {}\r\n", k).as_bytes())
             .expect("parse failure");
         if let MemcacheRequest::Delete { key, noreply } = request.message {
-            assert_eq!(key.as_ref(), k.as_bytes());
+            assert_eq!(key, k.as_bytes());
             assert!(!noreply);
         } else {
             panic!("invalid parse result");
@@ -171,7 +171,7 @@ fn delete() {
             .parse(format!("delete {} noreply\r\n", k).as_bytes())
             .expect("parse failure");
         if let MemcacheRequest::Delete { key, noreply } = request.message {
-            assert_eq!(key.as_ref(), k.as_bytes());
+            assert_eq!(key, k.as_bytes());
             assert!(noreply);
         } else {
             panic!("invalid parse result");
@@ -220,7 +220,7 @@ fn trailing_whitespace() {
     if let MemcacheRequest::Get { keys } = request.message {
         println!("keys: {:?}", keys);
         assert_eq!(keys.len(), 1);
-        assert_eq!(keys[0].as_ref(), b"key");
+        assert_eq!(keys[0], b"key");
     } else {
         panic!("invalid parse result");
     }
@@ -322,7 +322,7 @@ fn pipelined() {
     let request = parser.parse(b"get 0\r\nget 1\r\n").expect("parse failure");
     if let MemcacheRequest::Get { keys } = request.message {
         assert!(keys.len() == 1);
-        assert_eq!(keys[0].as_ref(), b"0");
+        assert_eq!(keys[0], b"0");
     } else {
         panic!("invalid parse result");
     }

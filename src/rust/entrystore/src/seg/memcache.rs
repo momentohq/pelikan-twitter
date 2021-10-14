@@ -7,22 +7,22 @@ use super::*;
 use protocol::memcache::{MemcacheEntry, MemcacheStorage, MemcacheStorageError};
 
 impl MemcacheStorage for Seg {
-    fn get(&mut self, keys: &[Box<[u8]>]) -> Box<[MemcacheEntry]> {
+    fn get(&mut self, keys: &[Vec<u8>]) -> Vec<MemcacheEntry> {
         let mut items = Vec::with_capacity(keys.len());
         for key in keys {
             if let Some(item) = self.data.get(key) {
                 let o = item.optional().unwrap_or(&[0, 0, 0, 0]);
                 let flags = u32::from_be_bytes([o[0], o[1], o[2], o[3]]);
                 items.push(MemcacheEntry {
-                    key: item.key().to_vec().into_boxed_slice(),
-                    value: Some(item.value().to_vec().into_boxed_slice()),
+                    key: item.key().to_vec(),
+                    value: Some(item.value().to_vec()),
                     flags,
                     cas: Some(item.cas().into()),
                     ttl: None,
                 });
             } else {
                 items.push(MemcacheEntry {
-                    key: key.to_vec().into_boxed_slice(),
+                    key: key.to_vec(),
                     value: None,
                     flags: 0,
                     cas: None,
@@ -31,7 +31,7 @@ impl MemcacheStorage for Seg {
             }
         }
 
-        items.into_boxed_slice()
+        items
     }
 
     fn set(&mut self, entry: &MemcacheEntry) -> Result<(), MemcacheStorageError> {
