@@ -30,6 +30,7 @@ pub struct QueuePairs<T, U> {
     queue_pairs: Vec<QueuePair<T, U>>,
     waker: Option<Arc<Waker>>,
     next: usize,
+    pending: Vec<usize>,
 }
 
 impl<T, U> QueuePairs<T, U> {
@@ -41,17 +42,18 @@ impl<T, U> QueuePairs<T, U> {
             queue_pairs: Vec::new(),
             waker,
             next: 0,
+            pending: Vec::new(),
         }
     }
 
     /// Returns the number of pending messages on the receive side for each
     /// queue.
-    pub fn pending(&self) -> Box<[usize]> {
-        self.queue_pairs
-            .iter()
-            .map(|queue_pair| queue_pair.pending())
-            .collect::<Vec<usize>>()
-            .into_boxed_slice()
+    pub fn pending(&self, counts: &mut Vec<usize>) {
+        counts.resize(self.queue_pairs.len(), 0);
+        for (id, queue) in self.queue_pairs.iter().enumerate() {
+            let pending = queue.pending();
+            counts[id] = pending;
+        }
     }
 
     /// Try to read from the queue pair with the specified queue id.
@@ -127,7 +129,8 @@ impl<T, U> QueuePairs<T, U> {
 
     /// Add an already initialized queue pair to this collection.
     pub fn add_pair(&mut self, queue_pair: QueuePair<T, U>) {
-        self.queue_pairs.push(queue_pair)
+        self.queue_pairs.push(queue_pair);
+        self.pending.push(0);
     }
 }
 

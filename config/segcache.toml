@@ -19,12 +19,12 @@ timeout = 100
 # epoll max events returned
 nevent = 1024
 # number of worker threads
-threads = 4
+threads = 8
 
 # storage configuration
 [seg]
 # hash power adjusts how many items can be held in the hashtable
-hash_power = 22
+hash_power = 25
 # total bytes to use for item storage - 4GiB
 heap_size = 4294967296
 # size of each segment in bytes - 1MiB

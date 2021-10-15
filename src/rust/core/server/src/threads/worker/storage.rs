@@ -78,7 +78,11 @@ where
     /// Run the storage thread in a loop, handling incoming messages from the
     /// worker threads
     pub fn run(&mut self) {
-        let workers = self.worker_queues.pending().len();
+        let mut worker_pending = Vec::new();
+        self.worker_queues.pending(&mut worker_pending);
+
+
+        let workers = worker_pending.len();
 
         let mut worker_needs_wake = vec![false; workers];
 
@@ -96,7 +100,7 @@ where
             }
 
             if !events.is_empty() {
-                let mut worker_pending = self.worker_queues.pending();
+                self.worker_queues.pending(&mut worker_pending);
 
                 trace!("handling events");
                 let mut empty = false;
