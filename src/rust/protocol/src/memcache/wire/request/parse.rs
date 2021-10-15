@@ -168,7 +168,7 @@ fn parse_get(buffer: &[u8]) -> Result<ParseOk<MemcacheRequest>, ParseError> {
                 if key_end <= previous || key_end > previous + MAX_KEY_LEN {
                     return Err(ParseError::Invalid);
                 } else {
-                    keys.push(buffer[previous..key_end].to_vec().into_boxed_slice());
+                    keys.push(buffer[previous..key_end].to_vec());
 
                     previous = key_end + whitespace.len();
 
@@ -179,7 +179,7 @@ fn parse_get(buffer: &[u8]) -> Result<ParseOk<MemcacheRequest>, ParseError> {
             }
             Sequence::Crlf | Sequence::SpaceCrlf => {
                 if key_end > previous && key_end <= previous + MAX_KEY_LEN {
-                    keys.push(buffer[previous..key_end].to_vec().into_boxed_slice());
+                    keys.push(buffer[previous..key_end].to_vec());
 
                     let consumed = key_end + whitespace.len() + 1;
 
@@ -187,7 +187,7 @@ fn parse_get(buffer: &[u8]) -> Result<ParseOk<MemcacheRequest>, ParseError> {
                         return Err(ParseError::Invalid);
                     } else {
                         let message = MemcacheRequest::Get {
-                            keys: keys.into_boxed_slice(),
+                            keys,
                         };
                         return Ok(ParseOk { message, consumed });
                     }
@@ -328,8 +328,8 @@ fn parse_set(
             return Err(ParseError::Invalid);
         }
 
-        let key = buffer[(cmd_end + 1)..key_end].to_vec().into_boxed_slice();
-        let value = Some(buffer[value_start..value_end].to_vec().into_boxed_slice());
+        let key = buffer[(cmd_end + 1)..key_end].to_vec();
+        let value = Some(buffer[value_start..value_end].to_vec());
 
         let entry = MemcacheEntry {
             key,
@@ -423,7 +423,7 @@ fn parse_delete(buffer: &[u8]) -> Result<ParseOk<MemcacheRequest>, ParseError> {
     }
 
     let request = MemcacheRequest::Delete {
-        key: buffer[(cmd_end + 1)..key_end].to_vec().into_boxed_slice(),
+        key: buffer[(cmd_end + 1)..key_end].to_vec(),
         noreply,
     };
 

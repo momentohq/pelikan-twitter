@@ -7,8 +7,8 @@ use super::*;
 use protocol::memcache::{MemcacheEntry, MemcacheStorage, MemcacheStorageError};
 
 impl MemcacheStorage for Noop {
-    fn get(&mut self, _keys: &[Box<[u8]>]) -> Box<[MemcacheEntry]> {
-        Vec::new().into_boxed_slice()
+    fn get(&mut self, _keys: &[Vec<u8>]) -> Vec<MemcacheEntry> {
+        Vec::new()
     }
 
     fn set(&mut self, _entry: &MemcacheEntry) -> Result<(), MemcacheStorageError> {

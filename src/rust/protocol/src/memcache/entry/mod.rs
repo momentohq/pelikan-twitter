@@ -4,8 +4,8 @@
 
 #[derive(Debug)]
 pub struct MemcacheEntry {
-    pub key: Box<[u8]>,
-    pub value: Option<Box<[u8]>>,
+    pub key: Vec<u8>,
+    pub value: Option<Vec<u8>>,
     pub ttl: Option<u32>,
     pub flags: u32,
     pub cas: Option<u64>,

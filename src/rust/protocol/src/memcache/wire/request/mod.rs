@@ -15,8 +15,8 @@ pub use parse::MemcacheRequestParser;
 
 pub const NOREPLY: &str = "noreply";
 
-pub type Key = Box<[u8]>;
-pub type Keys = Box<[Key]>;
+pub type Key = Vec<u8>;
+pub type Keys = Vec<Key>;
 
 #[derive(Debug)]
 pub enum MemcacheRequest {

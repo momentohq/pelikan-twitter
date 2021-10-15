@@ -14,7 +14,7 @@ pub enum MemcacheStorageError {
 /// as storage in a Memcache-like backend.
 pub trait MemcacheStorage {
     /// Lookup the specified key(s) and return entries that exist
-    fn get(&mut self, keys: &[Box<[u8]>]) -> Box<[MemcacheEntry]>;
+    fn get(&mut self, keys: &[Vec<u8>]) -> Vec<MemcacheEntry>;
 
     /// Store an entry and return a response
     fn set(&mut self, entry: &MemcacheEntry) -> Result<(), MemcacheStorageError>;

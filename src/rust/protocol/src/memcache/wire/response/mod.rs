@@ -21,7 +21,7 @@ pub enum MemcacheResult {
     Deleted,
     Exists,
     Values {
-        entries: Box<[MemcacheEntry]>,
+        entries: Vec<MemcacheEntry>,
         cas: bool,
     },
     NotFound,
