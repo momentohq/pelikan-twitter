@@ -7,7 +7,7 @@
 //! perform efficient eager expiration of items.
 
 use config::SegcacheConfig;
-use entrystore::Noop;
+use entrystore::Seg;
 use logger::*;
 use protocol::memcache::{MemcacheRequest, MemcacheRequestParser, MemcacheResponse};
 use server::{Process, ProcessBuilder};
@@ -15,7 +15,7 @@ use server::{Process, ProcessBuilder};
 type Parser = MemcacheRequestParser;
 type Request = MemcacheRequest;
 type Response = MemcacheResponse;
-type Storage = Noop;
+type Storage = Seg;
 
 /// This structure represents a running `Segcache` process.
 #[allow(dead_code)]
@@ -33,8 +33,7 @@ impl Segcache {
         metrics::init();
 
         // initialize storage
-        let storage = Storage::new();
-        // let storage = Storage::new(config.seg());
+        let storage = Storage::new(config.seg());
 
         let max_buffer_size = std::cmp::max(
             server::DEFAULT_BUFFER_SIZE,
