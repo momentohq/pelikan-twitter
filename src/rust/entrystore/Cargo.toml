@@ -2,7 +2,7 @@
 name = "entrystore"
 version = "0.0.1"
 authors = ["Brian Martin <bmartin@twitter.com>"]
-edition = "2018"
+edition = "2021"
 description = "a collection of entry storage types for use in Pelikan servers"
 homepage = "https://pelikan.io"
 repository = "https://github.com/twitter/pelikan"
