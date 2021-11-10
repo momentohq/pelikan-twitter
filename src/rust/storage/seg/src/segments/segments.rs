@@ -16,8 +16,6 @@ static_metrics! {
     static SEGMENT_EVICT_EX: Counter;
     static SEGMENT_RETURN: Counter;
     static SEGMENT_FREE: Gauge;
-    static SEGMENT_REQUEST: Counter;
-    static SEGMENT_REQUEST_EX: Counter;
     static SEGMENT_MERGE: Counter;
     static SEGMENT_CURRENT: Gauge;
 }
@@ -172,7 +170,9 @@ impl Segments {
         if segment.next_seg().is_none() && !expire {
             Err(())
         } else {
-            assert_eq!(segment.evictable(), true);
+            // TODO(bmartin): this should probably result in an error and not be
+            // an assert
+            assert!(segment.evictable(), "segment was not evictable");
             segment.set_evictable(false);
             segment.set_accessible(false);
             segment.clear(hashtable, expire);
@@ -226,7 +226,7 @@ impl Segments {
             Policy::None => Err(SegmentsError::NoEvictableSegments),
             _ => {
                 SEGMENT_EVICT.increment();
-                if let Some(id) = self.least_valuable_seg() {
+                if let Some(id) = self.least_valuable_seg(ttl_buckets) {
                     self.clear_segment(id, hashtable, false)
                         .map_err(|_| SegmentsError::EvictFailure)?;
 
@@ -378,10 +378,7 @@ impl Segments {
     pub(crate) fn pop_free(&mut self) -> Option<NonZeroU32> {
         assert!(self.free <= self.cap);
 
-        SEGMENT_REQUEST.increment();
-
         if self.free == 0 {
-            SEGMENT_REQUEST_EX.increment();
             None
         } else {
             SEGMENT_FREE.decrement();
@@ -408,8 +405,8 @@ impl Segments {
                 self.headers[id_idx].write_offset() as usize,
                 std::mem::size_of_val(&SEG_MAGIC),
                 "segment: ({}) in free queue has write_offset: ({})",
-                id,
-                self.headers[id as usize].write_offset()
+                id.unwrap(),
+                self.headers[id_idx].write_offset()
             );
 
             rustcommon_time::refresh_clock();
@@ -424,7 +421,10 @@ impl Segments {
     /// Returns the least valuable segment based on the configured eviction
     /// policy. An eviction attempt should be made for the corresponding segment
     /// before moving on to the next least valuable segment.
-    pub(crate) fn least_valuable_seg(&mut self) -> Option<NonZeroU32> {
+    pub(crate) fn least_valuable_seg(
+        &mut self,
+        ttl_buckets: &mut TtlBuckets,
+    ) -> Option<NonZeroU32> {
         match self.evict.policy() {
             Policy::None => None,
             Policy::Random => {
@@ -437,6 +437,28 @@ impl Segments {
                     if self.headers[idx as usize].can_evict() {
                         // safety: we are always adding 1 to the index
                         return Some(unsafe { NonZeroU32::new_unchecked(idx + 1) });
+                    }
+                }
+
+                None
+            }
+            Policy::RandomFifo => {
+                // This strategy is implemented by picking a random accessible
+                // segment and looking up the head of the corresponding
+                // `TtlBucket` and evicting that segment. This is functionally
+                // equivalent to picking a `TtlBucket` from a weighted
+                // distribution based on the number of segments per bucket.
+
+                let mut start: u32 = self.evict.random();
+
+                start %= self.cap;
+
+                for i in 0..self.cap {
+                    let idx = (start + i) % self.cap;
+                    if self.headers[idx as usize].accessible() {
+                        let ttl = self.headers[idx as usize].ttl();
+                        let ttl_bucket = ttl_buckets.get_mut_bucket(ttl);
+                        return ttl_bucket.head();
                     }
                 }
 
@@ -584,7 +606,11 @@ impl Segments {
     pub(crate) fn check_integrity(&mut self) -> bool {
         let mut integrity = true;
         for id in 0..self.cap {
-            if !self.get_mut(id).unwrap().check_integrity() {
+            if !self
+                .get_mut(NonZeroU32::new(id + 1).unwrap())
+                .unwrap()
+                .check_integrity()
+            {
                 integrity = false;
             }
         }

@@ -12,6 +12,11 @@ pub enum Policy {
     /// Segment random eviction. Selects a random segment and evicts it. Similar
     /// to slab random eviction.
     Random,
+    /// Random FIFO eviction. Selects a random TTL Bucket, weighted by the
+    /// number of segments, and evicts the oldest segment in the bucket. This
+    /// strategy helps preserve the TTL distribution of the working set and
+    /// prioritizes keeping newer items.
+    RandomFifo,
     /// FIFO segment eviction. Selects the oldest segment and evicts it. As
     /// segments are append-only, this is similar to both slab LRU and slab LRC
     /// eviction strategies.
@@ -50,6 +55,8 @@ pub enum Policy {
         /// will only occur if a segment falls below `1/N`th occupancy. Setting
         /// this higher will cause fewer compaction runs but can result in a
         /// larger percentage of dead bytes.
+        ///
+        /// Note: Compaction will be disabled by setting this parameter to zero.
         compact: usize,
     },
 }

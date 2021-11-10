@@ -6,20 +6,26 @@
 //! used with [`::mio`]. TLS/SSL is provided by BoringSSL with the [`::boring`]
 //! crate.
 
+#[macro_use]
+extern crate rustcommon_logger;
+
 mod buffer;
 mod stream;
 mod tcp_stream;
 
-use std::borrow::Borrow;
-use std::borrow::BorrowMut;
-use std::io::BufRead;
-use std::io::{ErrorKind, Read, Write};
+use metrics::Heatmap;
+use metrics::Relaxed;
+use rustcommon_time::Duration;
+use std::borrow::{Borrow, BorrowMut};
+use std::cmp::Ordering;
+use std::io::{BufRead, ErrorKind, Read, Write};
 use std::net::SocketAddr;
 
 use boring::ssl::{MidHandshakeSslStream, SslStream};
-use metrics::{static_metrics, Counter};
+use metrics::{static_metrics, Counter, Gauge};
 use mio::event::Source;
 use mio::{Interest, Poll, Token};
+use rustcommon_time::Instant;
 
 use buffer::Buffer;
 use stream::Stream;
@@ -27,8 +33,11 @@ use stream::Stream;
 pub use tcp_stream::TcpStream;
 
 static_metrics! {
+    static SESSION_BUFFER_BYTE: Gauge;
+
     static TCP_ACCEPT: Counter;
     static TCP_CLOSE: Counter;
+    static TCP_CONN_CURR: Gauge;
     static TCP_RECV_BYTE: Counter;
     static TCP_SEND_BYTE: Counter;
     static TCP_SEND_PARTIAL: Counter;
@@ -39,6 +48,10 @@ static_metrics! {
     static SESSION_SEND: Counter;
     static SESSION_SEND_EX: Counter;
     static SESSION_SEND_BYTE: Counter;
+
+    static REQUEST_LATENCY: Relaxed<Heatmap> = Relaxed::new(||
+        Heatmap::new(1_000_000_000, 3, Duration::from_secs(60), Duration::from_secs(1))
+    );
 }
 
 // TODO(bmartin): implement connect/reconnect so we can use this in clients too.
@@ -51,6 +64,30 @@ pub struct Session {
     write_buffer: Buffer,
     min_capacity: usize,
     max_capacity: usize,
+    // hold current interest set
+    interest: Interest,
+    // TODO(bmartin): consider moving these fields and associated logic
+    // out into a response tracking struct. It would make the session
+    // type more applicable to clients if we move this out.
+    //
+    /// A timestamp which is used to calculate response latency
+    timestamp: Instant,
+    /// This is a queue of pending response sizes. When a response is finalized,
+    /// the bytes in that response are pushed onto the back of the queue. As the
+    /// session flushes out to the underlying socket, we can calculate when a
+    /// response is completely flushed to the underlying socket and record a
+    /// response latency.
+    pending_responses: [usize; 256],
+    /// This is the index of the first pending response.
+    pending_head: usize,
+    /// This is the count of pending responses.
+    pending_count: usize,
+    /// This holds the total number of bytes pending for finalized responses. By
+    /// tracking this, we can determine the size of a response even if it is
+    /// written into the session with multiple calls to write. It is essentially
+    /// a cached value of `write_buffer.pending_bytes()` that does not reflect
+    /// bytes from responses which are not yet finalized.
+    pending_bytes: usize,
 }
 
 impl Session {
@@ -86,6 +123,7 @@ impl Session {
     /// Create a new `Session`
     fn new(stream: Stream, min_capacity: usize, max_capacity: usize) -> Self {
         TCP_ACCEPT.increment();
+        TCP_CONN_CURR.add(1);
         Self {
             token: Token(0),
             stream,
@@ -93,6 +131,12 @@ impl Session {
             write_buffer: Buffer::with_capacity(min_capacity),
             min_capacity,
             max_capacity,
+            interest: Interest::READABLE,
+            timestamp: Instant::now(),
+            pending_responses: [0; 256],
+            pending_head: 0,
+            pending_count: 0,
+            pending_bytes: 0,
         }
     }
 
@@ -110,6 +154,11 @@ impl Session {
     /// Reregister the `Session` with the event loop
     pub fn reregister(&mut self, poll: &Poll) -> Result<(), std::io::Error> {
         let interest = self.readiness();
+        if interest == self.interest {
+            return Ok(());
+        }
+        debug!("reregister: {:?}", interest);
+        self.interest = interest;
         self.stream
             .reregister(poll.registry(), self.token, interest)
     }
@@ -125,11 +174,19 @@ impl Session {
     }
 
     /// Get the set of readiness events the session is waiting for
+    ///
+    /// NOTE: we effectively block additional reads when there are writes
+    /// pending. This may not be an appropriate choice for all use-cases, but
+    /// for a server, it can be used to apply back-pressure.
+    //
+    // TODO(bmartin): we could make this behavior conditional if we have a
+    // use-case that requires different handling, but it comes with complexity
+    // of having to set the behavior for each session.
     fn readiness(&self) -> Interest {
         if self.write_buffer.is_empty() {
             Interest::READABLE
         } else {
-            Interest::READABLE | Interest::WRITABLE
+            Interest::WRITABLE
         }
     }
 
@@ -181,6 +238,65 @@ impl Session {
 
     pub fn peer_addr(&self) -> Result<SocketAddr, std::io::Error> {
         self.stream.peer_addr()
+    }
+
+    pub fn timestamp(&self) -> Instant {
+        self.timestamp
+    }
+
+    pub fn set_timestamp(&mut self, timestamp: Instant) {
+        self.timestamp = timestamp;
+    }
+
+    pub fn finalize_response(&mut self) {
+        let previous = self.pending_bytes;
+        let current = self.write_pending();
+
+        match current.cmp(&previous) {
+            Ordering::Greater => {
+                // We've finalized a response that has some pending bytes to
+                // track. If there's room in the tracking struct, we add it so
+                // we can determine latency later.
+                if self.pending_count < self.pending_responses.len() {
+                    let mut idx = self.pending_head + self.pending_count;
+                    if idx >= self.pending_responses.len() {
+                        idx %= self.pending_responses.len();
+                    }
+                    self.pending_responses[idx] = current - previous;
+                    self.pending_count += 1;
+                }
+            }
+            Ordering::Equal => {
+                // We've finalized a response that is zero-length. This is
+                // expected for empty responses such as when handling memcache
+                // requests which specify `NOREPLY`. Since there are no pending
+                // bytes for a zero-length response, we can determine the
+                // latency now.
+                let now = Instant::now();
+                let latency = (now - self.timestamp()).as_nanos() as u64;
+                REQUEST_LATENCY.increment(now, latency, 1);
+            }
+            Ordering::Less => {
+                // This indicates that our tracking is off. This could be due to
+                // a protocol failing to finalize some type of response.
+                //
+                // NOTE: this does not indicate corruption of the buffer and
+                // only indicates some issue with the pending response tracking
+                // used to calculate latencies. This path is an attempt to
+                // recover by skipping the tracking for this request.
+                error!(
+                    "Failed to calculate length of finalized response. \
+                    Previous pending bytes: {} Current write buffer length: {}",
+                    previous, current
+                );
+
+                // If it's a debug build, we will also assert that this is
+                // unexpected.
+                debug_assert!(false);
+            }
+        }
+
+        self.pending_bytes = current;
     }
 }
 
@@ -254,14 +370,89 @@ impl Write for Session {
         Ok(src.len())
     }
 
+    // need a different flush
     fn flush(&mut self) -> Result<(), std::io::Error> {
         SESSION_SEND.increment();
         match self.stream.write((self.write_buffer).borrow()) {
             Ok(0) => Ok(()),
-            Ok(bytes) => {
+            Ok(mut bytes) => {
+                let flushed_bytes = bytes;
                 SESSION_SEND_BYTE.add(bytes as _);
                 self.write_buffer.consume(bytes);
-                self.stream.flush()
+
+                // NOTE: we expect that the stream flush is essentially a no-op
+                // based on the implementation for `TcpStream`
+
+                let now = Instant::now();
+                let latency = (now - self.timestamp()).as_nanos() as u64;
+                let mut completed = 0;
+
+                // iterate through the pending response lengths and perform the
+                // bookkeeping to calculate how many have been flushed to the
+                // `TcpStream` in this call of `flush()`
+                while bytes > 0 && self.pending_count > 0 {
+                    // first response out of the buffer
+                    let head = &mut self.pending_responses[self.pending_head];
+
+                    if bytes >= *head {
+                        // we flushed all (or more) than the first response
+                        bytes -= *head;
+                        *head = 0;
+                        completed += 1;
+                        self.pending_count -= 1;
+
+                        // move the head pointer forward
+                        if self.pending_head + 1 < self.pending_responses.len() {
+                            self.pending_head += 1;
+                        } else {
+                            self.pending_head = 0;
+                        }
+                    } else {
+                        // we only flushed part of the first response
+                        *head -= bytes;
+                        bytes = 0;
+                    }
+                }
+
+                match flushed_bytes.cmp(&self.pending_bytes) {
+                    Ordering::Less => {
+                        // The buffer is not completely flushed to the
+                        // underlying stream, we will still have more pending
+                        // bytes.
+                        self.pending_bytes -= flushed_bytes;
+                    }
+                    Ordering::Equal => {
+                        // The buffer is completely flushed. We have no more
+                        // pending bytes.
+                        self.pending_bytes = 0;
+                    }
+                    Ordering::Greater => {
+                        // This indicates that the tracking is off. Potentially
+                        // due to a protocol implementation that failed to
+                        // finalize some response.
+                        //
+                        // NOTE: this does not indicate corruption of the buffer
+                        // and only indicates some issue with the pending
+                        // response tracking used to calculate latencies. This
+                        // path is an attempt to recover and resume tracking by
+                        // setting the pending bytes to the current write buffer
+                        // length.
+                        error!(
+                            "Session flushed {} bytes, but only had {} pending bytes to track",
+                            flushed_bytes, self.pending_bytes
+                        );
+                        self.pending_bytes = self.write_pending();
+
+                        // If it's a debug build, we will also assert that this
+                        // is unexpected.
+                        debug_assert!(false);
+                    }
+                }
+
+                // Increment the histogram with the calculated latency.
+                REQUEST_LATENCY.increment(now, latency, completed);
+
+                Ok(())
             }
             Err(e) => {
                 SESSION_SEND_EX.increment();

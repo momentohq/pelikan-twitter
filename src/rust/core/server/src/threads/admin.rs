@@ -11,7 +11,8 @@ use crate::TCP_ACCEPT_EX;
 use boring::ssl::{HandshakeError, MidHandshakeSslStream, Ssl, SslContext, SslStream};
 use common::signal::Signal;
 use config::AdminConfig;
-use metrics::{static_metrics, Counter, Gauge};
+use logger::*;
+use metrics::{static_metrics, Counter, Gauge, Heatmap};
 use mio::event::Event;
 use mio::Events;
 use mio::Token;
@@ -52,6 +53,10 @@ static_metrics! {
     static RU_NIVCSW: Counter;
 }
 
+const KB: u64 = 1024; // one kilobyte in bytes
+const S: u64 = 1_000_000_000; // one second in nanoseconds
+const US: u64 = 1_000; // one microsecond in nanoseconds
+
 /// A `Admin` is used to bind to a given socket address and handle out-of-band
 /// admin requests.
 pub struct Admin {
@@ -62,11 +67,26 @@ pub struct Admin {
     ssl_context: Option<SslContext>,
     signal_queue: QueuePairs<(), Signal>,
     parser: AdminRequestParser,
+    log_drain: Box<dyn Drain>,
 }
+
+static PERCENTILES: &[(&str, f64)] = &[
+    ("p25", 25.0),
+    ("p50", 50.0),
+    ("p75", 75.0),
+    ("p90", 90.0),
+    ("p99", 99.0),
+    ("p999", 99.9),
+    ("p9999", 99.99),
+];
 
 impl Admin {
     /// Creates a new `Admin` event loop.
-    pub fn new(config: &AdminConfig, ssl_context: Option<SslContext>) -> Result<Self, Error> {
+    pub fn new(
+        config: &AdminConfig,
+        ssl_context: Option<SslContext>,
+        log_drain: Box<dyn Drain>,
+    ) -> Result<Self, Error> {
         let addr = config.socket_addr().map_err(|e| {
             error!("{}", e);
             std::io::Error::new(std::io::ErrorKind::Other, "Bad listen address")
@@ -93,6 +113,7 @@ impl Admin {
             ssl_context,
             signal_queue,
             parser: AdminRequestParser::new(),
+            log_drain,
         })
     }
 
@@ -141,7 +162,7 @@ impl Admin {
                 Ok((stream, _)) => {
                     // handle TLS if it is configured
                     if let Some(ssl_context) = &self.ssl_context {
-                        match Ssl::new(&ssl_context).map(|v| v.accept(stream)) {
+                        match Ssl::new(ssl_context).map(|v| v.accept(stream)) {
                             // handle case where we have a fully-negotiated
                             // TLS stream on accept()
                             Ok(Ok(tls_stream)) => {
@@ -177,13 +198,25 @@ impl Admin {
         for metric in &metrics::rustcommon_metrics::metrics() {
             let any = match metric.as_any() {
                 Some(any) => any,
-                None => continue,
+                None => {
+                    continue;
+                }
             };
 
             if let Some(counter) = any.downcast_ref::<Counter>() {
                 data.push(format!("STAT {} {}\r\n", metric.name(), counter.value()));
             } else if let Some(gauge) = any.downcast_ref::<Gauge>() {
                 data.push(format!("STAT {} {}\r\n", metric.name(), gauge.value()));
+            } else if let Some(heatmap) = any.downcast_ref::<Heatmap>() {
+                for (label, value) in PERCENTILES {
+                    let percentile = heatmap.percentile(*value).unwrap_or(0);
+                    data.push(format!(
+                        "STAT {}_{} {}\r\n",
+                        metric.name(),
+                        label,
+                        percentile
+                    ));
+                }
             }
         }
 
@@ -192,6 +225,7 @@ impl Admin {
             let _ = session.write(line.as_bytes());
         }
         let _ = session.write(b"END\r\n");
+        session.finalize_response();
         ADMIN_RESPONSE_COMPOSE.increment();
     }
 
@@ -281,6 +315,8 @@ impl Admin {
             }
 
             self.get_rusage();
+
+            let _ = self.log_drain.flush();
         }
     }
 
@@ -319,16 +355,12 @@ impl Admin {
         };
 
         if unsafe { libc::getrusage(libc::RUSAGE_SELF, &mut rusage) } == 0 {
-            RU_UTIME.set(
-                rusage.ru_utime.tv_sec as u64 * 1000000000 + rusage.ru_utime.tv_usec as u64 * 1000,
-            );
-            RU_STIME.set(
-                rusage.ru_stime.tv_sec as u64 * 1000000000 + rusage.ru_stime.tv_usec as u64 * 1000,
-            );
-            RU_MAXRSS.set(rusage.ru_maxrss as i64);
-            RU_IXRSS.set(rusage.ru_ixrss as i64);
-            RU_IDRSS.set(rusage.ru_idrss as i64);
-            RU_ISRSS.set(rusage.ru_isrss as i64);
+            RU_UTIME.set(rusage.ru_utime.tv_sec as u64 * S + rusage.ru_utime.tv_usec as u64 * US);
+            RU_STIME.set(rusage.ru_stime.tv_sec as u64 * S + rusage.ru_stime.tv_usec as u64 * US);
+            RU_MAXRSS.set(rusage.ru_maxrss * KB as i64);
+            RU_IXRSS.set(rusage.ru_ixrss * KB as i64);
+            RU_IDRSS.set(rusage.ru_idrss * KB as i64);
+            RU_ISRSS.set(rusage.ru_isrss * KB as i64);
             RU_MINFLT.set(rusage.ru_minflt as u64);
             RU_MAJFLT.set(rusage.ru_majflt as u64);
             RU_NSWAP.set(rusage.ru_nswap as u64);
