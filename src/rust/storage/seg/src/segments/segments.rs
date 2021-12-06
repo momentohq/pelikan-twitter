@@ -5,6 +5,7 @@
 use crate::datapool::*;
 use crate::eviction::*;
 use crate::item::*;
+use crate::seg::{SEGMENT_REQUEST, SEGMENT_REQUEST_SUCCESS};
 use crate::segments::*;
 
 use core::num::NonZeroU32;
@@ -396,6 +397,8 @@ impl Segments {
         if self.free == 0 {
             None
         } else {
+            SEGMENT_REQUEST.increment();
+            SEGMENT_REQUEST_SUCCESS.increment();
             SEGMENT_FREE.decrement();
             self.free -= 1;
             let id = self.free_q;
