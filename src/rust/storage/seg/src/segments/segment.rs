@@ -20,7 +20,7 @@ pub const SEG_MAGIC: u64 = 0xBADC0FFEEBADCAFE;
 /// A `Segment` is a contiguous allocation of bytes and an associated header
 /// which contains metadata. This structure allows us to operate on mutable
 /// borrows of the header and data sections to perform basic operations.
-pub struct Segment<'a> {
+pub(crate) struct Segment<'a> {
     header: &'a mut SegmentHeader,
     data: &'a mut [u8],
 }
@@ -210,7 +210,7 @@ impl<'a> Segment<'a> {
 
     /// Returns the time the segment was last initialized
     #[inline]
-    pub fn create_at(&self) -> CoarseInstant {
+    pub fn create_at(&self) -> UnixTime {
         self.header.create_at()
     }
 

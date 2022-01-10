@@ -27,19 +27,17 @@
 //! ```
 
 use super::SEG_MAGIC;
+use crate::UnixTime;
 use core::num::NonZeroU32;
 use rustcommon_time::*;
 
-use rustcommon_time::CoarseDuration as Duration;
-use rustcommon_time::CoarseInstant as Instant;
-
 // the minimum age of a segment before it is eligible for eviction
 // TODO(bmartin): this should be parameterized.
-const SEG_MATURE_TIME: Duration = Duration::from_secs(20);
+const SEG_MATURE_TIME: CoarseDuration = CoarseDuration::from_secs(20);
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct SegmentHeader {
+pub(crate) struct SegmentHeader {
     /// The id for this segment
     id: NonZeroU32,
     /// Current write position
@@ -53,9 +51,9 @@ pub struct SegmentHeader {
     /// The next segment in the TtlBucket or on the free queue
     next_seg: Option<NonZeroU32>,
     /// The time the segment was last "created" (taken from free queue)
-    create_at: Instant,
+    create_at: UnixTime,
     /// The time the segment was last merged
-    merge_at: Instant,
+    merge_at: UnixTime,
     /// The TTL of the segment in seconds
     ttl: u32,
     /// Is the segment accessible?
@@ -74,9 +72,9 @@ impl SegmentHeader {
             live_items: 0,
             prev_seg: None,
             next_seg: None,
-            create_at: Instant::recent(),
+            create_at: UnixTime::epoch(),
             ttl: 0,
-            merge_at: Instant::recent(),
+            merge_at: UnixTime::epoch(),
             accessible: false,
             evictable: false,
             _pad: [0; 25],
@@ -95,8 +93,8 @@ impl SegmentHeader {
         self.prev_seg = None;
         self.next_seg = None;
         self.live_items = 0;
-        self.create_at = Instant::recent();
-        self.merge_at = Instant::recent();
+        self.create_at = UnixTime::recent();
+        self.merge_at = UnixTime::recent();
         self.accessible = true;
     }
 
@@ -244,26 +242,26 @@ impl SegmentHeader {
 
     #[inline]
     /// Returns the instant at which the segment was created
-    pub fn create_at(&self) -> CoarseInstant {
+    pub(crate) fn create_at(&self) -> UnixTime {
         self.create_at
     }
 
     #[inline]
     /// Update the created time
-    pub fn mark_created(&mut self) {
-        self.create_at = CoarseInstant::recent();
+    pub(crate) fn mark_created(&mut self) {
+        self.create_at = UnixTime::recent();
     }
 
     #[inline]
     /// Returns the instant at which the segment was merged
-    pub fn merge_at(&self) -> CoarseInstant {
+    pub(crate) fn merge_at(&self) -> UnixTime {
         self.merge_at
     }
 
     #[inline]
     /// Update the created time
-    pub fn mark_merged(&mut self) {
-        self.merge_at = CoarseInstant::recent();
+    pub(crate) fn mark_merged(&mut self) {
+        self.merge_at = UnixTime::recent();
     }
 
     #[inline]
@@ -275,6 +273,6 @@ impl SegmentHeader {
     pub fn can_evict(&self) -> bool {
         self.evictable()
             && self.next_seg().is_some()
-            && (self.create_at() + self.ttl()) >= (Instant::recent() + SEG_MATURE_TIME)
+            && (self.create_at() + self.ttl()) >= (UnixTime::recent() + SEG_MATURE_TIME)
     }
 }

@@ -31,6 +31,7 @@ use rustcommon_time::*;
 
 // includes from core/std
 use core::hash::{BuildHasher, Hasher};
+use core::ops::{Add, Sub};
 use std::convert::TryInto;
 
 // submodules
@@ -65,5 +66,43 @@ pub(crate) use hashtable::*;
 pub(crate) use item::*;
 pub(crate) use segments::*;
 pub(crate) use ttl_buckets::*;
+
+// some helper functions and types, until changes are made in rustcommon
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct UnixTime {
+    inner: u32,
+}
+
+impl UnixTime {
+	const EPOCH: Self = Self { inner: 0 };
+
+    pub fn now() -> Self {
+        Self { inner: now_unix() }
+    }
+
+    pub fn recent() -> Self {
+        Self {
+            inner: recent_unix(),
+        }
+    }
+}
+
+impl Sub<UnixTime> for UnixTime {
+    type Output = CoarseDuration;
+
+    fn sub(self, other: UnixTime) -> CoarseDuration {
+        CoarseDuration::from_secs(self.inner - other.inner)
+    }
+}
+
+impl Add<CoarseDuration> for UnixTime {
+    type Output = UnixTime;
+
+    fn add(self, other: CoarseDuration) -> UnixTime {
+        UnixTime {
+            inner: self.inner + other.as_secs(),
+        }
+    }
+}
 
 metrics::test_no_duplicates!();

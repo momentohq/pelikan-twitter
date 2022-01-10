@@ -9,7 +9,6 @@ use crate::segments::*;
 
 use core::num::NonZeroU32;
 use metrics::{static_metrics, Counter, Gauge};
-use rustcommon_time::CoarseInstant as Instant;
 
 static_metrics! {
     static SEGMENT_EVICT: Counter;
@@ -37,7 +36,7 @@ pub(crate) struct Segments {
     /// Head of the free segment queue
     free_q: Option<NonZeroU32>,
     /// Time last flushed
-    flush_at: CoarseInstant,
+    flush_at: UnixTime,
     /// Eviction configuration and state
     evict: Box<Eviction>,
 }
@@ -108,7 +107,7 @@ impl Segments {
             free: segments as u32,
             free_q: NonZeroU32::new(1),
             data,
-            flush_at: Instant::recent(),
+            flush_at: UnixTime::epoch(),
             evict: Box::new(Eviction::new(segments, evict_policy)),
         }
     }
@@ -126,7 +125,7 @@ impl Segments {
     }
 
     /// Returns the time the segments were last flushed
-    pub fn flush_at(&self) -> CoarseInstant {
+    pub fn flush_at(&self) -> UnixTime {
         self.flush_at
     }
 
@@ -545,14 +544,6 @@ impl Segments {
             }
 
             if let Some(next_id) = self.headers[id_idx].next_seg() {
-                // require that this segment has not merged recently, this
-                // reduces CPU load under heavy rewrite/delete workloads at the
-                // cost of letting more dead items remain in the segements,
-                // reducing the hitrate
-                // if self.headers[seg_id as usize].merge_at() + CoarseDuration::from_secs(30) > CoarseInstant::recent() {
-                //     return Ok(());
-                // }
-
                 let next_idx = next_id.get() as usize - 1;
 
                 // if the next segment can't be evicted, we shouldn't merge

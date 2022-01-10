@@ -78,8 +78,6 @@ use ahash::RandomState;
 use core::num::NonZeroU32;
 use metrics::{static_metrics, Counter};
 
-use rustcommon_time::CoarseInstant as Instant;
-
 mod hash_bucket;
 
 pub(crate) use hash_bucket::*;
@@ -107,7 +105,7 @@ pub(crate) struct HashTable {
     mask: u64,
     data: Box<[HashBucket]>,
     rng: Box<Random>,
-    started: CoarseInstant,
+    started: UnixTime,
     next_to_chain: u64,
 }
 
@@ -152,7 +150,7 @@ impl HashTable {
             mask,
             data: data.into_boxed_slice(),
             rng: Box::new(rng()),
-            started: Instant::recent(),
+            started: UnixTime::recent(),
             next_to_chain: buckets as u64,
         }
     }
@@ -169,7 +167,7 @@ impl HashTable {
 
         trace!("hash: {} mask: {} bucket: {}", hash, self.mask, bucket_id);
 
-        let curr_ts = (Instant::recent() - self.started).as_secs() as u64 & PROC_TS_MASK;
+        let curr_ts = (UnixTime::recent() - self.started).as_secs() as u64 & PROC_TS_MASK;
         if curr_ts != get_ts(bucket.data[0]) {
             bucket.data[0] = (bucket.data[0] & !TS_MASK) | (curr_ts << TS_BIT_SHIFT);
 

@@ -45,7 +45,7 @@ const MAX_TTL_BUCKET_IDX: usize = MAX_N_TTL_BUCKET - 1;
 
 pub struct TtlBuckets {
     pub(crate) buckets: Box<[TtlBucket]>,
-    pub(crate) last_expired: CoarseInstant,
+    pub(crate) last_expired: UnixTime,
 }
 
 impl TtlBuckets {
@@ -69,7 +69,7 @@ impl TtlBuckets {
         }
 
         let buckets = buckets.into_boxed_slice();
-        let last_expired = CoarseInstant::now();
+        let last_expired = UnixTime::epoch();
 
         Self {
             buckets,
@@ -107,7 +107,7 @@ impl TtlBuckets {
     }
 
     pub(crate) fn expire(&mut self, hashtable: &mut HashTable, segments: &mut Segments) -> usize {
-        let now = CoarseInstant::now();
+        let now = UnixTime::now();
 
         if now == self.last_expired {
             return 0;

@@ -5,11 +5,11 @@
 //! Eviction is used to select a segment to remove when the cache becomes full.
 //! An eviction [`Policy`] determines what data will be evicted from the cache.
 
+use crate::UnixTime;
 use core::cmp::{max, Ordering};
 use core::num::NonZeroU32;
 
 use rand::Rng;
-use rustcommon_time::CoarseInstant as Instant;
 
 use crate::rng;
 use crate::segments::*;
@@ -21,9 +21,9 @@ pub use policy::Policy;
 
 /// The `Eviction` struct is used to rank and return segments for eviction. It
 /// implements eviction strategies corresponding to the `Policy`.
-pub struct Eviction {
+pub(crate) struct Eviction {
     policy: Policy,
-    last_update_time: Instant,
+    last_update_time: UnixTime,
     ranked_segs: Box<[Option<NonZeroU32>]>,
     index: usize,
     rng: Box<Random>,
@@ -40,7 +40,7 @@ impl Eviction {
 
         Self {
             policy,
-            last_update_time: Instant::recent(),
+            last_update_time: UnixTime::EPOCH,
             ranked_segs,
             index: 0,
             rng: Box::new(rng()),
@@ -70,7 +70,7 @@ impl Eviction {
     }
 
     pub fn should_rerank(&mut self) -> bool {
-        let now = Instant::recent();
+        let now = UnixTime::recent();
         match self.policy {
             Policy::None | Policy::Random | Policy::RandomFifo | Policy::Merge { .. } => false,
             Policy::Fifo | Policy::Cte | Policy::Util => {
