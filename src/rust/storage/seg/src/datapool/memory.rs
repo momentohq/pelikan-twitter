@@ -5,47 +5,44 @@
 //! A simple memory backed datapool which stores a contiguous slice of bytes
 //! heap-allocated in main memory.
 
+use memmap2::{MmapMut, MmapOptions};
 use crate::datapool::Datapool;
 
-/// A contiguous allocation of bytes in main memory
+const PAGE_SIZE: usize = 4096;
+
+/// A contiguous allocation of bytes in main memory, created as an anonymous
+/// memory map.
 pub struct Memory {
-    data: Box<[u8]>,
+    mmap: MmapMut,
+    size: usize,
 }
 
 impl Memory {
     /// Create a new `Memory` datapool with the specified size (in bytes)
-    pub fn create(size: usize, prefault: bool) -> Self {
-        // We allow slow vector initialization here because it is necessary for
-        // prefaulting the vector. If we use just the macro, the memory region
-        // is allocated but will not become resident.
-        #[allow(clippy::slow_vector_initialization)]
-        let data = if prefault {
-            // TODO(bmartin): this pattern can likely be replaced with the vec
-            // macro + a read every page_size bytes which may be faster than the
-            // resize pattern used here.
-            let mut data = Vec::with_capacity(size);
-            data.resize(size, 0);
-            data
-        } else {
-            vec![0; size]
-        };
-
-        let data = data.into_boxed_slice();
-
-        Self { data }
+    pub fn create(size: usize, prefault: bool) -> Result<Self, std::io::Error> {
+        let mut mmap = MmapOptions::new().len(size).populate().map_anon()?;
+        if prefault {
+            let mut offset = 0;
+            while offset < size {
+                mmap[offset] = 0;
+                offset += PAGE_SIZE;
+            }
+            mmap.flush()?;
+        }
+        Ok(Self { mmap, size })
     }
 }
 
 impl Datapool for Memory {
     fn as_slice(&self) -> &[u8] {
-        &self.data
+        &self.mmap[..self.size]
     }
 
     fn as_mut_slice(&mut self) -> &mut [u8] {
-        &mut self.data
+        &mut self.mmap[..self.size]
     }
 
     fn flush(&self) -> Result<(), std::io::Error> {
-        Ok(())
+        self.mmap.flush()
     }
 }

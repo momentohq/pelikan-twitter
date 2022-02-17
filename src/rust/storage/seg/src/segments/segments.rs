@@ -81,7 +81,7 @@ impl Segments {
                 .expect("failed to allocate file backed storage");
             Box::new(pool)
         } else {
-            Box::new(Memory::create(heap_size, true))
+            Box::new(Memory::create(heap_size, true).expect("failed to allocate memory for storage"))
         };
 
         for idx in 0..segments {
