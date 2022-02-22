@@ -260,6 +260,9 @@ where
                         }
                     }
                 }
+                if session.read_pending() > 0 && self.handle_session_read(token).is_ok() {
+                    let _ = self.storage_queue.wake();
+                }
             }
             if reregister {
                 self.poll.reregister(token);
