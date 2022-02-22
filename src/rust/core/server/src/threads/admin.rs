@@ -177,11 +177,6 @@ impl Drop for Admin {
 }
 
 impl Admin {
-    /// Triggers a flush of the log
-    pub fn log_flush(&mut self) -> Result<(), std::io::Error> {
-        self.log_drain.flush()
-    }
-
     /// Adds a new fully established TLS session
     fn add_established_tls_session(&mut self, stream: SslStream<TcpStream>) {
         let session = Session::tls_with_capacity(
