@@ -880,10 +880,10 @@ dependencies = [
 name = "queues"
 version = "0.2.0"
 dependencies = [
- "crossbeam-channel",
  "mio",
  "rand",
  "rand_chacha",
+ "rtrb 0.2.1",
 ]
 
 [[package]]
@@ -996,6 +996,15 @@ name = "rtrb"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "318256ac02f7e11a48a10339ba5dca8bd7eb17496abf384e8ea909bb2ae5275f"
+dependencies = [
+ "cache-padded",
+]
+
+[[package]]
+name = "rtrb"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "041ed130bf0bc1ef82c1b0e326d23c4b799876968e3483421c8b9e59f55f3308"
 dependencies = [
  "cache-padded",
 ]
@@ -1205,7 +1214,7 @@ dependencies = [
  "protocol",
  "queues",
  "rand",
- "rtrb",
+ "rtrb 0.1.4",
  "serde",
  "serde_json",
  "session",
@@ -1226,7 +1235,7 @@ dependencies = [
  "metrics",
  "mio",
  "rand",
- "rtrb",
+ "rtrb 0.1.4",
  "serde",
  "serde_json",
  "slab",
