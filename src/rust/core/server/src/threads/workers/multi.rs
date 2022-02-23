@@ -7,7 +7,6 @@
 //! the requests to the storage worker. Responses from the storage worker are
 //! then serialized onto the session buffer.
 
-use queues::TrackedItem;
 use super::*;
 use crate::poll::Poll;
 use common::signal::Signal;
@@ -18,6 +17,7 @@ use entrystore::EntryStore;
 use mio::event::Event;
 use mio::{Events, Token, Waker};
 use protocol::{Compose, Execute, Parse, ParseError};
+use queues::TrackedItem;
 use session::Session;
 use std::io::{BufRead, Write};
 use std::sync::Arc;
@@ -244,7 +244,10 @@ where
         }
     }
 
-    fn handle_storage_queue(&mut self, responses: &mut Vec<TrackedItem<TokenWrapper<Option<Response>>>>) {
+    fn handle_storage_queue(
+        &mut self,
+        responses: &mut Vec<TrackedItem<TokenWrapper<Option<Response>>>>,
+    ) {
         trace!("handling event for storage queue");
         // process all storage queue responses
         self.storage_queue.try_recv_all(responses);
