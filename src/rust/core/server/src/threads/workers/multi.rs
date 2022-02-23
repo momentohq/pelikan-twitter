@@ -242,7 +242,7 @@ where
     fn handle_storage_queue(&mut self) {
         trace!("handling event for storage queue");
         // process all storage queue responses
-        while let Ok(message) = self.storage_queue.try_recv().map(|v| v.into_inner()) {
+        for message in self.storage_queue.try_recv_all().drain(..).map(|v| v.into_inner()) {
             let token = message.token();
             let mut reregister = false;
             if let Ok(session) = self.poll.get_mut_session(token) {
