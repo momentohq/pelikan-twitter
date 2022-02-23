@@ -7,6 +7,7 @@
 //! the requests to the storage worker. Responses from the storage worker are
 //! then serialized onto the session buffer.
 
+use queues::TrackedItem;
 use super::*;
 use crate::poll::Poll;
 use common::signal::Signal;
@@ -105,7 +106,11 @@ where
 {
     /// Run the worker in a loop, handling new events.
     pub fn run(&mut self) {
+        // these are buffers which are re-used in each loop iteration to receive
+        // events and queue messages
         let mut events = Events::with_capacity(self.nevent);
+        let mut responses = Vec::with_capacity(1024);
+        let mut sessions = Vec::with_capacity(1024);
 
         loop {
             WORKER_EVENT_LOOP.increment();
@@ -123,8 +128,8 @@ where
             for event in events.iter() {
                 match event.token() {
                     WAKER_TOKEN => {
-                        self.handle_new_sessions();
-                        self.handle_storage_queue();
+                        self.handle_new_sessions(&mut sessions);
+                        self.handle_storage_queue(&mut responses);
 
                         #[allow(clippy::never_loop)]
                         // check if we received any signals from the admin thread
@@ -239,10 +244,12 @@ where
         }
     }
 
-    fn handle_storage_queue(&mut self) {
+    fn handle_storage_queue(&mut self, responses: &mut Vec<TrackedItem<TokenWrapper<Option<Response>>>>) {
         trace!("handling event for storage queue");
         // process all storage queue responses
-        for message in self.storage_queue.try_recv_all().drain(..).map(|v| v.into_inner()) {
+        self.storage_queue.try_recv_all(responses);
+
+        for message in responses.drain(..).map(|v| v.into_inner()) {
             let token = message.token();
             let mut reregister = false;
             if let Ok(session) = self.poll.get_mut_session(token) {
@@ -271,8 +278,9 @@ where
         let _ = self.storage_queue.wake();
     }
 
-    fn handle_new_sessions(&mut self) {
-        while let Ok(session) = self.session_queue.try_recv().map(|v| v.into_inner()) {
+    fn handle_new_sessions(&mut self, sessions: &mut Vec<TrackedItem<Session>>) {
+        self.session_queue.try_recv_all(sessions);
+        for session in sessions.drain(..).map(|v| v.into_inner()) {
             let pending = session.read_pending();
             trace!(
                 "new session: {:?} with {} bytes pending in read buffer",

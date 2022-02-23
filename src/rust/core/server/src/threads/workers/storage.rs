@@ -88,6 +88,7 @@ where
     /// Run the `StorageWorker` in a loop, handling new session events.
     pub fn run(&mut self) {
         let mut events = Events::with_capacity(self.nevent);
+        let mut requests = Vec::with_capacity(1024);
 
         loop {
             STORAGE_EVENT_LOOP.increment();
@@ -102,7 +103,7 @@ where
             if !events.is_empty() {
                 trace!("handling events");
 
-                let requests = self.storage_queue.try_recv_all();
+                self.storage_queue.try_recv_all(&mut requests);
 
                 STORAGE_QUEUE_DEPTH.increment(
                     common::time::Instant::<common::time::Nanoseconds<u64>>::now(),
@@ -110,7 +111,7 @@ where
                     1,
                 );
 
-                for request in requests {
+                for request in requests.drain(..) {
                     let sender = request.sender();
                     let request = request.into_inner();
                     trace!("handling request from worker: {}", sender);

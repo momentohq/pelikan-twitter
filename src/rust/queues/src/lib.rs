@@ -139,15 +139,13 @@ impl<T, U> Queues<T, U> {
     }
 
     /// Try to receive all pending items from the queue
-    pub fn try_recv_all(&self) -> Vec<TrackedItem<U>> {
+    pub fn try_recv_all(&self, buf: &mut Vec<TrackedItem<U>>) {
         let pending = self.receiver.len();
-        let mut result = Vec::with_capacity(pending);
         for _ in 0..pending {
             if let Ok(item) = self.receiver.try_recv() {
-                result.push(item);
+                buf.push(item);
             }
         }
-        result
     }
 
     /// Try to send a single item to the receiver specified by the `id`. Allows
