@@ -40,6 +40,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.7.6"
+source = "git+https://github.com/brayniac/aHash?branch=aes#3ced10d6573e001204c91d3f43bc699ddf69a1a8"
+dependencies = [
+ "getrandom",
+ "once_cell",
+ "version_check",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1154,7 +1164,7 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 name = "seg"
 version = "0.1.0"
 dependencies = [
- "ahash 0.7.4",
+ "ahash 0.7.6",
  "common",
  "criterion",
  "logger",

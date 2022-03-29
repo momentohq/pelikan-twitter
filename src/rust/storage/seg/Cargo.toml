@@ -25,7 +25,7 @@ debug = ["magic"]
 default = []
 
 [dependencies]
-ahash = "0.7.2"
+ahash = { git = "https://github.com/brayniac/aHash", branch = "aes" }
 common = { path = "../../common" }
 logger = { path = "../../logger" }
 memmap2 = "0.2.2"
