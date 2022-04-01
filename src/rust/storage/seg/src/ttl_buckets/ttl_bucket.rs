@@ -91,7 +91,7 @@ impl TtlBucket {
             if let Some(seg_id) = seg_id {
                 let flush_at = segments.flush_at();
                 let mut segment = segments.get_mut(seg_id).unwrap();
-                if segment.create_at() + segment.ttl() <= Instant::recent()
+                if segment.create_at() + segment.ttl() <= Instant::recent_local()
                     || segment.create_at() < flush_at
                 {
                     if let Some(next) = segment.next_seg() {

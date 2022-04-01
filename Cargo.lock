@@ -241,7 +241,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "boring",
- "rustcommon-metrics-v2",
+ "rustcommon-metrics",
  "rustcommon-time",
  "serde",
 ]
@@ -597,9 +597,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.14"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
+checksum = "6389c490849ff5bc16be905ae24bc913a9c8892e19b2341dbc175e14c341c2b8"
 dependencies = [
  "cfg-if",
 ]
@@ -1067,7 +1067,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-atomics"
 version = "1.0.0"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
 dependencies = [
  "serde",
 ]
@@ -1075,7 +1075,7 @@ dependencies = [
 [[package]]
 name = "rustcommon-heatmap"
 version = "0.1.1"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
 dependencies = [
  "rustcommon-atomics",
  "rustcommon-histogram",
@@ -1086,27 +1086,16 @@ dependencies = [
 [[package]]
 name = "rustcommon-histogram"
 version = "1.0.0"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
 dependencies = [
  "rustcommon-atomics",
  "thiserror",
 ]
 
 [[package]]
-name = "rustcommon-metrics-derive"
+name = "rustcommon-metrics"
 version = "0.1.0"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "rustcommon-metrics-v2"
-version = "0.1.0"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
 dependencies = [
  "linkme",
  "once_cell",
@@ -1118,9 +1107,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustcommon-metrics-derive"
+version = "0.1.0"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "rustcommon-time"
 version = "0.0.11"
-source = "git+https://github.com/twitter/rustcommon?rev=c8aeeb605b3bdc42c2c309ac8c096f17fed5380d#c8aeeb605b3bdc42c2c309ac8c096f17fed5380d"
+source = "git+https://github.com/brayniac/rustcommon?rev=c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0#c8a66e8bc8f3f9a39476c527740b1b1aadbc35f0"
 dependencies = [
  "lazy_static",
  "libc",
@@ -1176,6 +1176,7 @@ dependencies = [
  "config",
  "criterion",
  "entrystore",
+ "log",
  "logger",
  "metrics",
  "protocol-memcache",
