@@ -41,6 +41,7 @@ backtrace = "0.3.56"
 clap = "2.33.3"
 config = { path = "../../config" }
 entrystore = { path = "../../entrystore" }
+log = { version = "0.4.16", features = ["release_max_level_debug"] }
 logger = { path = "../../logger" }
 metrics = { path = "../../metrics" }
 protocol-memcache = { path = "../../protocol/memcache" }
