@@ -40,7 +40,7 @@ impl Eviction {
 
         Self {
             policy,
-            last_update_time: Instant::recent_local(),
+            last_update_time: Instant::now(),
             ranked_segs,
             index: 0,
             rng: Box::new(rng()),
@@ -70,7 +70,7 @@ impl Eviction {
     }
 
     pub fn should_rerank(&mut self) -> bool {
-        let now = Instant::recent_local();
+        let now = Instant::now();
         match self.policy {
             Policy::None | Policy::Random | Policy::RandomFifo | Policy::Merge { .. } => false,
             Policy::Fifo | Policy::Cte | Policy::Util => {

@@ -109,7 +109,7 @@ impl Segments {
             free: segments as u32,
             free_q: NonZeroU32::new(1),
             data,
-            flush_at: Instant::recent_local(),
+            flush_at: Instant::now(),
             evict: Box::new(Eviction::new(segments, evict_policy)),
         }
     }
@@ -571,7 +571,7 @@ impl Segments {
                 // reduces CPU load under heavy rewrite/delete workloads at the
                 // cost of letting more dead items remain in the segements,
                 // reducing the hitrate
-                // if self.headers[seg_id as usize].merge_at() + CoarseDuration::from_secs(30) > CoarseInstant::recent_local() {
+                // if self.headers[seg_id as usize].merge_at() + CoarseDuration::from_secs(30) > CoarseInstant::now() {
                 //     return Ok(());
                 // }
 

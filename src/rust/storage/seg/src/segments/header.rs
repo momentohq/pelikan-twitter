@@ -72,9 +72,9 @@ impl SegmentHeader {
             live_items: 0,
             prev_seg: None,
             next_seg: None,
-            create_at: Instant::recent_local(),
+            create_at: Instant::now(),
             ttl: 0,
-            merge_at: Instant::recent_local(),
+            merge_at: Instant::now(),
             accessible: false,
             evictable: false,
             _pad: [0; 25],
@@ -93,8 +93,8 @@ impl SegmentHeader {
         self.prev_seg = None;
         self.next_seg = None;
         self.live_items = 0;
-        self.create_at = Instant::recent_local();
-        self.merge_at = Instant::recent_local();
+        self.create_at = Instant::now();
+        self.merge_at = Instant::now();
         self.accessible = true;
     }
 
@@ -249,7 +249,7 @@ impl SegmentHeader {
     #[inline]
     /// Update the created time
     pub fn mark_created(&mut self) {
-        self.create_at = Instant::recent_local();
+        self.create_at = Instant::now();
     }
 
     #[inline]
@@ -261,7 +261,7 @@ impl SegmentHeader {
     #[inline]
     /// Update the created time
     pub fn mark_merged(&mut self) {
-        self.merge_at = Instant::recent_local();
+        self.merge_at = Instant::now();
     }
 
     #[inline]
@@ -273,6 +273,6 @@ impl SegmentHeader {
     pub fn can_evict(&self) -> bool {
         self.evictable()
             && self.next_seg().is_some()
-            && (self.create_at() + self.ttl()) >= (Instant::recent_local() + SEG_MATURE_TIME)
+            && (self.create_at() + self.ttl()) >= (Instant::now() + SEG_MATURE_TIME)
     }
 }

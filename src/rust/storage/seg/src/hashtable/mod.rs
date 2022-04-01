@@ -150,7 +150,7 @@ impl HashTable {
             mask,
             data: data.into_boxed_slice(),
             rng: Box::new(rng()),
-            started: Instant::recent_local(),
+            started: Instant::now(),
             next_to_chain: buckets as u64,
         }
     }
@@ -167,7 +167,7 @@ impl HashTable {
 
         trace!("hash: {} mask: {} bucket: {}", hash, self.mask, bucket_id);
 
-        let curr_ts = (Instant::recent_local() - self.started).as_secs() as u64 & PROC_TS_MASK;
+        let curr_ts = (Instant::now() - self.started).as_secs() as u64 & PROC_TS_MASK;
         if curr_ts != get_ts(bucket.data[0]) {
             bucket.data[0] = (bucket.data[0] & !TS_MASK) | (curr_ts << TS_BIT_SHIFT);
 
