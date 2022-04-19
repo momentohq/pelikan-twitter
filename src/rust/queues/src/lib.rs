@@ -4,6 +4,7 @@
 
 //! Queue type for inter-process communication (IPC).
 
+use core::sync::atomic::{AtomicBool, Ordering};
 pub use mio::Waker;
 
 use crossbeam_queue::*;
@@ -28,7 +29,7 @@ pub struct Queues<T, U> {
 struct WakingSender<T> {
     inner: Arc<ArrayQueue<T>>,
     waker: Arc<Waker>,
-    needs_wake: bool,
+    needs_wake: Arc<AtomicBool>,
 }
 
 impl<T> Clone for WakingSender<T> {
@@ -36,7 +37,7 @@ impl<T> Clone for WakingSender<T> {
         Self {
             inner: self.inner.clone(),
             waker: self.waker.clone(),
-            needs_wake: false,
+            needs_wake: self.needs_wake.clone(),
         }
     }
 }
@@ -51,16 +52,16 @@ impl<T> WakingSender<T> {
     pub fn try_send(&mut self, item: T) -> Result<(), T> {
         let result = self.inner.push(item);
         if result.is_ok() {
-            self.needs_wake = true;
+            self.needs_wake.store(true, Ordering::Relaxed);
         }
         result
     }
 
     pub fn wake(&mut self) -> Result<(), std::io::Error> {
-        if self.needs_wake {
+        if self.needs_wake.swap(false, Ordering::Relaxed) {
             let result = self.waker.wake();
-            if result.is_ok() {
-                self.needs_wake = false;
+            if !result.is_ok() {
+                self.needs_wake.store(true, Ordering::Relaxed);
             }
             result
         } else {
@@ -117,10 +118,11 @@ impl<T, U> Queues<T, U> {
 
         for waker in b_wakers.drain(..) {
             let q = Arc::new(ArrayQueue::new(capacity));
+            let needs_wake = Arc::new(AtomicBool::new(false));
             let s = WakingSender {
                 inner: q.clone(),
                 waker,
-                needs_wake: false,
+                needs_wake,
             };
             a_tx.push(s);
             b_rx.push(q);
@@ -137,10 +139,11 @@ impl<T, U> Queues<T, U> {
 
         for waker in a_wakers.drain(..) {
             let q = Arc::new(ArrayQueue::new(capacity));
+            let needs_wake = Arc::new(AtomicBool::new(false));
             let s = WakingSender {
                 inner: q.clone(),
                 waker,
-                needs_wake: false,
+                needs_wake,
             };
             b_tx.push(s);
             a_rx.push(q);
