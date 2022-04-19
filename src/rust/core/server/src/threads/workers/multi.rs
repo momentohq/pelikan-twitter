@@ -49,7 +49,7 @@ impl<Storage, Parser, Request, Response> MultiWorkerBuilder<Storage, Parser, Req
         Ok(Self {
             poll,
             nevent: config.worker().nevent(),
-            timeout: Duration::from_millis(config.worker().timeout() as u64),
+            timeout: config.worker().timeout(),
             _request: PhantomData,
             _response: PhantomData,
             _storage: PhantomData,
@@ -148,8 +148,8 @@ where
                 }
             }
 
-            // wakes the storage thread if necessary
-            let _ = self.storage_queue.wake();
+            // handle storage queue via polling
+            self.handle_storage_queue(&mut responses);
         }
     }
 
@@ -268,15 +268,15 @@ where
                         }
                     }
                 }
-                if session.read_pending() > 0 && self.handle_session_read(token).is_ok() {
-                    let _ = self.storage_queue.wake();
-                }
+                // if session.read_pending() > 0 && self.handle_session_read(token).is_ok() {
+                //     let _ = self.storage_queue.wake();
+                // }
             }
             if reregister {
                 self.poll.reregister(token);
             }
         }
-        let _ = self.storage_queue.wake();
+        // let _ = self.storage_queue.wake();
     }
 
     fn handle_new_sessions(&mut self, sessions: &mut Vec<TrackedItem<Session>>) {

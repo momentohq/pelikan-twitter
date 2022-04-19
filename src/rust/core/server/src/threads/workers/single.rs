@@ -51,7 +51,7 @@ impl<Storage, Parser, Request, Response> SingleWorkerBuilder<Storage, Parser, Re
         Ok(Self {
             poll,
             nevent: config.worker().nevent(),
-            timeout: Duration::from_millis(config.worker().timeout() as u64),
+            timeout: config.worker().timeout(),
             storage,
             _request: PhantomData,
             _response: PhantomData,

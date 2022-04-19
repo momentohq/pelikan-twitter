@@ -35,7 +35,7 @@ impl<Storage, Request, Response> StorageWorkerBuilder<Storage, Request, Response
 
         Ok(Self {
             nevent: config.worker().nevent(),
-            timeout: Duration::from_millis(config.worker().timeout() as u64),
+            timeout: config.worker().timeout(),
             poll,
             storage,
             _request: PhantomData,
@@ -98,37 +98,6 @@ where
             if !events.is_empty() {
                 trace!("handling events");
 
-                self.storage_queue.try_recv_all(&mut requests);
-
-                STORAGE_QUEUE_DEPTH.increment(
-                    common::time::Instant::<common::time::Nanoseconds<u64>>::now(),
-                    requests.len() as _,
-                    1,
-                );
-
-                for request in requests.drain(..) {
-                    let sender = request.sender();
-                    let request = request.into_inner();
-                    trace!("handling request from worker: {}", sender);
-                    PROCESS_REQ.increment();
-                    let token = request.token();
-                    let response = self.storage.execute(request.into_inner());
-                    let mut message = TokenWrapper::new(response, token);
-                    for retry in 0..QUEUE_RETRIES {
-                        if let Err(m) = self.storage_queue.try_send_to(sender, message) {
-                            if (retry + 1) == QUEUE_RETRIES {
-                                error!("error sending message to worker");
-                            }
-                            let _ = self.storage_queue.wake();
-                            message = m;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                let _ = self.storage_queue.wake();
-
                 // check if we received any signals from the admin thread
                 while let Some(s) = self.signal_queue.try_recv().map(|v| v.into_inner()) {
                     match s {
@@ -145,6 +114,37 @@ where
 
                             return;
                         }
+                    }
+                }
+            }
+
+            // handle storage queue via polling
+
+            self.storage_queue.try_recv_all(&mut requests);
+
+            STORAGE_QUEUE_DEPTH.increment(
+                common::time::Instant::<common::time::Nanoseconds<u64>>::now(),
+                requests.len() as _,
+                1,
+            );
+
+            for request in requests.drain(..) {
+                let sender = request.sender();
+                let request = request.into_inner();
+                trace!("handling request from worker: {}", sender);
+                PROCESS_REQ.increment();
+                let token = request.token();
+                let response = self.storage.execute(request.into_inner());
+                let mut message = TokenWrapper::new(response, token);
+                for retry in 0..QUEUE_RETRIES {
+                    if let Err(m) = self.storage_queue.try_send_to(sender, message) {
+                        if (retry + 1) == QUEUE_RETRIES {
+                            error!("error sending message to worker");
+                        }
+                        let _ = self.storage_queue.wake();
+                        message = m;
+                    } else {
+                        break;
                     }
                 }
             }
