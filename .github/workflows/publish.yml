@@ -25,7 +25,11 @@ jobs:
       - name: Docker login
         run: |
           docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
-      - name: Build Docker image for momento-proxy
+      - name: Build Docker image for momento-proxy with specific version tag
         run: docker build --tag $DOCKER_USER/momento-proxy:${{ steps.semrel.outputs.version }} .
-      - name: Docker push
+      - name: Build Docker image for momento-proxy with latest tag
+        run: docker build --tag $DOCKER_USER/momento-proxy:latest .
+      - name: Docker push image with specific version
+        run: docker push $DOCKER_USER/momento-proxy:${{ steps.semrel.outputs.version }}
+      - name: Docker push image with latest version
         run: docker push $DOCKER_USER/momento-proxy

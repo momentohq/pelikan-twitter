@@ -25,7 +25,7 @@ ENV MOMENTO_AUTHENTICATION=""
 ENV CONFIG="./momento-proxy.toml"
 
 COPY --from=cargo-build ./target/release/momento_proxy .
-COPY --from=cargo-build ./config/momento-proxy.toml .
+COPY --from=cargo-build ./config/momento_proxy.toml .
 
 RUN chmod +x ./momento_proxy
 CMD ./momento_proxy ${CONFIG}
