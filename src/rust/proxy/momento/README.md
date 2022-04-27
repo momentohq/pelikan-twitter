@@ -6,16 +6,16 @@ cache offering without any code changes.
 
 ## Features
 
-* **Transparent**: allows existing applications which use Memcached to switch to
+- **Transparent**: allows existing applications which use Memcached to switch to
   Momento without code changes.
-* **Stats**: get insight into runtime by using the Memcached `stats` command on
+- **Stats**: get insight into runtime by using the Memcached `stats` command on
   the admin port.
-* **Command Log**: enables logging of commands for audit and offline workload
+- **Command Log**: enables logging of commands for audit and offline workload
   analysis.
 
 ## Limitations
 
-* Only `get` and `set` operations are supported.
+- Only `get` and `set` operations are supported.
 
 ## Building
 
@@ -41,7 +41,7 @@ use with the proxy.
 
 The Momento proxy uses a TOML configuration file. As there aren't any sensible
 defaults, we require that you provide a configuration file when using the proxy.
-See the [example config](../../config/momento-proxy.toml) and modify it to suit
+See the [example config](../../../../config/momento_proxy.toml) and modify it to suit
 your requirements.
 
 ## Running
@@ -49,10 +49,26 @@ your requirements.
 After completing the build and configuration, you are ready to run the Momento
 proxy.
 
-```cargo run --release --bin momento_proxy -- path/to/config.toml```
+`cargo run --release --bin momento_proxy -- path/to/config.toml`
 
 Your application can now connect to the proxy on the configured port(s) to send
 requests to the corresponding Momento cache(s).
 
 The resulting binary will be `target/release/momento_proxy` and it can be copied
 to a standard system path (eg: `/usr/local/bin`).
+
+### momento-proxy Docker image
+
+You can also run a momento-proxy Docker image to run the Momento proxy.
+
+```
+docker pull gomomento/momento-proxy
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN>
+```
+
+By default, [this configuration](../../../../config/momento_proxy.toml) is used for the Momento proxy.
+To set your own, please provide an env variable `CONFIG` when running a container.
+
+```
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE>
+```
