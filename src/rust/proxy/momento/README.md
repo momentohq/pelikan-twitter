@@ -59,7 +59,7 @@ to a standard system path (eg: `/usr/local/bin`).
 
 ### momento-proxy Docker image
 
-You can also run a momento-proxy Docker image to run the Momento proxy.
+Running the momento-proxy image to run the Momento proxy.
 
 ```
 docker pull gomomento/momento-proxy
@@ -71,4 +71,36 @@ To set your own, please provide an env variable `CONFIG` when running a containe
 
 ```
 docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE>
+```
+
+### momento-proxy Docker image local development
+
+- Building a new momento-proxy image:
+
+```
+docker build --tag momento-proxy .
+```
+
+- Running the newly built image with the default config:
+
+```
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN>
+```
+
+- Running the newly built image with your custom config:
+
+```
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE>
+```
+
+- Testing to see if a container with the momento-proxy is running properly with telnet:
+
+```
+telnet 0.0.0.0 11211
+Trying 0.0.0.0...
+Connected to 0.0.0.0.
+Escape character is '^]'
+set foo 0 0  3
+bar
+STORED
 ```
