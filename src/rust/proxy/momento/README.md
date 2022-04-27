@@ -59,7 +59,7 @@ to a standard system path (eg: `/usr/local/bin`).
 
 ### momento-proxy Docker image
 
-Running the momento-proxy image to run the Momento proxy.
+You can run the `momento-proxy` container by pulling it from [Momento's](https://momentohq.com/) [docker hub registry](https://hub.docker.com/u/gomomento) with following commands.
 
 ```
 docker pull gomomento/momento-proxy
