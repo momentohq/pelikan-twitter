@@ -63,14 +63,14 @@ Running the momento-proxy image to run the Momento proxy.
 
 ```
 docker pull gomomento/momento-proxy
-docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> momento-proxy
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> gomomento/momento-proxy
 ```
 
 By default, [this configuration](../../../../config/momento_proxy.toml) is used for the Momento proxy.
 To set your own, please provide an env variable `CONFIG` when running a container.
 
 ```
-docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE> momento-proxy
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE> gomomento/momento-proxy
 ```
 
 ### momento-proxy Docker image local development
