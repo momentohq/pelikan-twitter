@@ -90,7 +90,7 @@ docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENT
 - Running the newly built image with your custom config:
 
 ```
-docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE> momento-proxy
+docker run -d -p 11211:11211 -p 9999:9999 -e MOMENTO_AUTHENTICATION=<YOUR_MOMENTO_TOKEN> -e CONFIG=<YOUR_CONFIG_FILE> -v /your/path/to/config/dir:/app/config momento-proxy
 ```
 
 - Testing to see if a container with the momento-proxy is running properly with telnet:
