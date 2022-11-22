@@ -28,8 +28,8 @@ use server::PERCENTILES;
 fn main() {
     // custom panic hook to terminate whole process after unwinding
     std::panic::set_hook(Box::new(|s| {
-        error!("{}", s);
-        println!("{:?}", Backtrace::new());
+        eprintln!("{}", s);
+        eprintln!("{:?}", Backtrace::new());
         std::process::exit(101);
     }));
 
@@ -100,10 +100,11 @@ fn main() {
 
     // load config from file
     let config = if let Some(file) = matches.value_of("CONFIG") {
+        debug!("loading config: {}", file);
         match SegcacheConfig::load(file) {
             Ok(c) => c,
-            Err(e) => {
-                println!("{}", e);
+            Err(error) => {
+                eprintln!("error loading config file: {file}\n{error}");
                 std::process::exit(1);
             }
         }
@@ -120,7 +121,7 @@ fn main() {
     match Segcache::new(config) {
         Ok(segcache) => segcache.wait(),
         Err(e) => {
-            println!("error launching segcache: {}", e);
+            eprintln!("error launching segcache: {}", e);
             std::process::exit(1);
         }
     }
