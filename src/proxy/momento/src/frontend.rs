@@ -102,6 +102,11 @@ pub(crate) async fn handle_resp_client(
                             break;
                         }
                     }
+                    resp::Request::Ping(_) => {
+                        if resp::ping(&mut socket).await.is_err() {
+                            break;
+                        }
+                    }
                 }
                 buf.advance(consumed);
             }
