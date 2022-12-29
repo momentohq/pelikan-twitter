@@ -2,9 +2,10 @@
 // Licensed under the Apache License, Version 2.0
 // http://www.apache.org/licenses/LICENSE-2.0
 
-use crate::protocol::*;
-use crate::*;
 use session::Buf;
+
+use crate::*;
+use crate::protocol::*;
 
 pub(crate) async fn handle_memcache_client(
     mut socket: tokio::net::TcpStream,
@@ -106,6 +107,11 @@ pub(crate) async fn handle_resp_client(
                         if resp::ping(&mut socket).await.is_err() {
                             break;
                         }
+                    }
+                    _ => {
+                        println!("bad request");
+                        let _ = socket.write_all(b"CLIENT_ERROR\r\n").await;
+                        break;
                     }
                 }
                 buf.advance(consumed);
